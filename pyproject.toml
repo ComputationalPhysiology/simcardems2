@@ -5,11 +5,11 @@ requires = ["setuptools>=61.0.0", "wheel"]
 name = "simcardems2"
 version = "0.0.5"
 description = "Library to run cardiac EP simulations"
-authors = [{name = "Henrik Finsberg", email = "henriknf@simula.no"}]
+authors = [{name = "Henrik Finsberg", email = "henriknf@simula.no"}, {name = "Lena Myklebust", email="lenam@simula.no"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.8"
-keywords = ["cardiac", "electrophysiology"]
+keywords = ["cardiac", "electro-mechanics"]
 dependencies = [
     "numpy",
     "gotranx",
@@ -40,22 +40,7 @@ pypi = [
     "twine",
     "build"
 ]
-demos = [
-   "cardiac-geometries",
-   "ldrb",
-   "pint",
-   "gotranx",
-   "numba",
-]
-pyvista = [
-    "pyvista[trame]",
-]
 
-docs = [
-   "jupyter-book",
-   "jupytext",
-   "fenics-beat[demos]"
-]
 all = [
    "fenics-beat[test]",
    "fenics-beat[docs]",
