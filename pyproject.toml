@@ -15,6 +15,7 @@ dependencies = [
     "gotranx",
     "fenics-beat",
     "fenics-pulse",
+    "toml"
 ]
 
 [project.urls]
