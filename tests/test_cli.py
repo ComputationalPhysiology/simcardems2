@@ -12,3 +12,4 @@ def test_cli(tmp_path):
 
     config_path.write_text(toml.dumps(config))
     assert main([str(config_path)]) == 0
+    assert (tmp_path / "results/output.txt").read_text() == "Mesh has 216 vertices."
