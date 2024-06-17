@@ -11,10 +11,11 @@ readme = "README.md"
 requires-python = ">=3.8"
 keywords = ["cardiac", "electro-mechanics"]
 dependencies = [
-    "numpy",
+    "numpy<2.0",
     "gotranx",
     "fenics-beat",
     "fenics-pulse",
+    "toml"
 ]
 
 [project.urls]
