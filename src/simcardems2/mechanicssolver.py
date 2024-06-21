@@ -52,7 +52,7 @@ class ContinuationProblem(NonlinearProblem):
         self._J = J
         self._F = F
 
-        self.bcs = [bcs]
+        self.bcs = enlist(bcs)
 
         # super(ContinuationProblem, self).__init__()
 
