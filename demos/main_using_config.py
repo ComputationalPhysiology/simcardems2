@@ -41,12 +41,44 @@ def parse_parameters(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("config-file", type=Path, help="Config file")
 
     args = vars(parser.parse_args(argv))
-    config = toml.loads(args["config-file"].read_text())
+    try:
+        config = toml.loads(args["config-file"].read_text())
+    except toml.TomlDecodeError as e:
+        print(f"Error when parsing parameters. Check that all parameters are defined as the correct types in config file. Error: {e}")
+        exit(1)
     return config
-
 
 config = parse_parameters()
 
+def validate_input(config):    
+    number_par = ["sim_dur", 
+                  "dt", 
+                  "N", 
+                  "sigma_il", 
+                  "sigma_it", 
+                  "sigma_el", 
+                  "sigma_et", 
+                  "mech_a", 
+                  "mech_a_f",
+                  "mech_b", 
+                  "mech_b_f", 
+                  "mech_a_s", 
+                  "mech_b_s", 
+                  "mech_a_fs", 
+                  "mech_b_fs"]
+    
+    for param in number_par:
+        if not isinstance(config[param], (int, float)):
+            raise ValueError(f"Parameter '{param} = {config[param]}' is a {type(config[param]).__name__}. Provide an integer or a float")
+    
+    int_par = ["N"]
+    for param in int_par:
+        if not isinstance(config[param], (int)):
+            raise ValueError(f"Parameter '{param} = {config[param]}' is a {type(config[param]).__name__}. Provide an integer")
+
+
+
+validate_input(config)
 
 # TODO: update to use Neumann BC from config
 
@@ -57,7 +89,6 @@ outdir.mkdir(parents=True, exist_ok=True)
 with open(Path(outdir / "config.txt"), "w") as f:
     f.write(toml.dumps(config))
     
-
 print(config)
 
 #for bc in range(config['bcs']['numbers']):

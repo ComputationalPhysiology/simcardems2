@@ -2,8 +2,8 @@
 
 # SIMULATION PARAMETERS
 mech_mesh = "mesh_mech_3.0" # mechanics mesh filepath without extension
-outdir = "test_config_2ms_N10_bcs_check_fix_x0plane_cornerstim0-1.5" # Output directory
-sim_dur = 2 # Duration of simulation. Integer
+outdir = "test_config_2ms_N10_try_to_break" # Output directory
+sim_dur = 1 # Duration of simulation. Integer
 dt = 0.05 # Timestep for ep solve
 N = 10 # Solve mechanics step every nth ep solve
 
