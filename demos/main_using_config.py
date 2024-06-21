@@ -1,7 +1,7 @@
 import logging
 import gotranx
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 import numpy as np
 import dolfin
 import pulse
@@ -9,11 +9,13 @@ import beat
 import configparser
 import sympy
 import os
+import argparse
+import toml
 import ufl_legacy as ufl
 import matplotlib.pyplot as plt
-#import utils
 
 
+from simcardems2 import utils
 from simcardems2 import mechanicssolver
 from simcardems2 import interpolation
 from simcardems2.land import LandModel
@@ -33,84 +35,43 @@ except ImportError:
 
 logging.getLogger("beat").setLevel(logging.ERROR)
 
-config = configparser.ConfigParser(inline_comment_prefixes="#")
-config.read('config.txt')
 
-# Non-optional parameters
-meshfile = config.get('SIMULATION PARAMETERS', 'mech_mesh')
-no_of_bcs = int(config.get('BOUNDARY CONDITIONS', 'bcs'))
-bcs_markerfile = config.get('BOUNDARY CONDITIONS', 'bcs_markerfile')
+def parse_parameters(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Simcardems CLI")
+    parser.add_argument("config-file", type=Path, help="Config file")
 
-traction = 0 # TODO: update to use Neumann BC from config
-
-# Parameters with defaults
-outdir = Path(config.get('SIMULATION PARAMETERS', 'outdir', fallback='OUTDIR'))
-end_t = int(config.get('SIMULATION PARAMETERS', 'sim_dur', fallback=1))
-dt = float(config.get('SIMULATION PARAMETERS', 'dt', fallback=0.05))
-N = int(config.get('SIMULATION PARAMETERS', 'mech_timestep_scaling', fallback=10))
-sigma_il = float(config.get('MODEL PARAMETERS', 'sigma_il', fallback=0.17))  # mS / mm
-sigma_it = float(config.get('MODEL PARAMETERS', 'sigma_it', fallback=0.019))  # mS / mm
-sigma_el = float(config.get('MODEL PARAMETERS', 'sigma_el', fallback=0.62))  # mS / mm
-sigma_et = float(config.get('MODEL PARAMETERS', 'sigma_et', fallback=0.24))  # mS / mm
-modelfile = str(config.get('MODEL PARAMETERS', 'modelfile', fallback='ORdmm_Land.ode'))
-a = float(config.get('MODEL PARAMETERS', 'mech_a', fallback=2.28))
-a_f = float(config.get('MODEL PARAMETERS', 'mech_a_f', fallback=1.686))
-b = float(config.get('MODEL PARAMETERS', 'mech_b', fallback=9.726))
-b_f = float(config.get('MODEL PARAMETERS', 'mech_b_f', fallback=15.779))
-a_s = float(config.get('MODEL PARAMETERS', 'mech_a_s', fallback=0.0))
-b_s = float(config.get('MODEL PARAMETERS', 'mech_b_s', fallback=0.0))
-a_fs = float(config.get('MODEL PARAMETERS', 'mech_a_fs', fallback=0.0))
-b_fs = float(config.get('MODEL PARAMETERS', 'mech_b_fs', fallback=0.0))
-stim_start = float(config.get('STIMULUS PARAMETERS', 'stim_start', fallback=0))
-stim_amplitude = float(config.get('STIMULUS PARAMETERS', 'stim_amplitude', fallback=0))
-stim_duration = float(config.get('STIMULUS PARAMETERS', 'stim_duration', fallback=0))
-stim_xlim = tuple(map(float, config.get('STIMULUS PARAMETERS', 'stim_xlim').split(',')))
-stim_ylim = tuple(map(float, config.get('STIMULUS PARAMETERS', 'stim_ylim').split(',')))
-stim_zlim = tuple(map(float, config.get('STIMULUS PARAMETERS', 'stim_zlim').split(',')))
-stim_region = stim_xlim, stim_ylim, stim_zlim
-
-# TODO: Change defaults from None so that simulation runs without without specifying these outputs
-out_ep = [var.strip() for var in config.get('SIMULATION PARAMETERS', 'out_ep', fallback=None).split(',')]
-out_mech = [var.strip() for var in config.get('SIMULATION PARAMETERS', 'out_mech', fallback=None).split(',')]
-out_ep_point = [var.strip() for var in config.get('SIMULATION PARAMETERS', 'out_point_ep', fallback=None).split(',')]
-out_mech_point = [var.strip() for var in config.get('SIMULATION PARAMETERS', 'out_point_mech', fallback=None).split(',')]
-
-out_ep_point_coords = {}
-for out_ep_var in out_ep_point:
-    out_ep_point_coords[out_ep_var] = tuple(map(int, config.get('SIMULATION PARAMETERS', f'out_point_ep.{out_ep_var}').split(',')))
-
-out_mech_point_coords = {}
-for out_mech_var in out_mech_point:
-    out_mech_point_coords[out_mech_var] = tuple(map(int, config.get('SIMULATION PARAMETERS', f'out_point_mech.{out_mech_var}').split(',')))
+    args = vars(parser.parse_args(argv))
+    config = toml.loads(args["config-file"].read_text())
+    return config
 
 
-if not os.path.exists(Path(outdir)):
-    os.makedirs(Path(outdir))
+config = parse_parameters()
+
+
+# TODO: update to use Neumann BC from config
+
+stim_region = config["stim"]["xlim"], config["stim"]["ylim"], config["stim"]["zlim"]
+outdir = Path(config["outdir"])
+outdir.mkdir(parents=True, exist_ok=True)
+
 with open(Path(outdir / "config.txt"), "w") as f:
-    config.write(f)
-    
+    f.write(toml.dumps(config))
     
 
-bcs_markers = {}
-bcs_types = {}
-bcs_variables = {}
-bcs_values = {}
-bcs_dirichlet = []
-bcs_neumann = []
-#t_bcs = dolfin.Constant(0)
+print(config)
 
-for bc in range(no_of_bcs):
-    bcs_markers[f"{bc}"] = int(config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].marker'))
-    bcs_types[f"{bc}"] = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].type')
-    bcs_variables[f"{bc}"] = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].variable')
+#for bc in range(config['bcs']['numbers']):
+#    bcs_markers[f"{bc}"] = int(config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].marker'))
+#    bcs_types[f"{bc}"] = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].type')
+#    bcs_variables[f"{bc}"] = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].variable')
     
-    bcs_val = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].func')
+#    bcs_val = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].func')
     
     # Try converting bcs to float, otherwise treat as function
-    try:
-        bcs_values[f"{bc}"] = dolfin.Constant(float(bcs_val))
-    except ValueError:
-        print(f"Function bcs: {bcs_val}")
+#    try:
+#        bcs_values[f"{bc}"] = dolfin.Constant(float(bcs_val))
+#    except ValueError:
+#        print(f"Function bcs: {bcs_val}")
         #bcs_values[f"{bc}"] = dolfin.Expression('alpha*t', alpha=traction_alpha, t=t_bcs, degree=0)
         
         
@@ -127,28 +88,36 @@ for bc in range(no_of_bcs):
         #    bcs_values[f"{bc}"].user_parameters[param] = param_value
             
 
-    if bcs_types[f"{bc}"] == 'Dirichlet':
+
+
+
+
+# TODO: do a different check than this later. something smoother
+bcs_dirichlet = []
+bcs_neumann = []
+for bc in range(config['bcs']['numbers']):
+    if config['bcs'][f"{bc}"]['type'] == 'Dirichlet':
         bcs_dirichlet.append(bc)
-    elif bcs_types[f"{bc}"] == 'Neumann':
+    elif config['bcs'][f"{bc}"]['type'] =='Neumann':
         bcs_neumann.append(bc)
     else:
-        raise KeyError(f'{bcs_types[f"{bc}"]} is not a valid type of boundary condition. Use Dirichlet or Neumann. Check config file')
+        raise KeyError(f'{config["bcs"][f"{bc}"]["type"]} is not a valid type of boundary condition. Use Dirichlet or Neumann. Check config file')
+
         
 
-
-print(f"Ep variables to output: {out_ep}")
-print(f"Mech variables to output: {out_mech}")
+print(f'Ep variables to output: {config["out_ep"]}')
+print(f'Mech variables to output: {config["out_mech"]}')
 
 mesh = dolfin.Mesh()
-with dolfin.XDMFFile(f"{meshfile}.xdmf") as infile:
+with dolfin.XDMFFile(f'{config["mech_mesh"]}.xdmf') as infile:
     infile.read(mesh)
-print(f'Loaded mesh: {meshfile}')
+print(f'Loaded mesh: {config["mech_mesh"]}')
 
 
 ffun_bcs = dolfin.MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
-with dolfin.XDMFFile(f"{bcs_markerfile}.xdmf") as infile:
+with dolfin.XDMFFile(f'{config["bcs"]["markerfile"]}.xdmf') as infile:
     infile.read(ffun_bcs)
-print(f'Loaded markerfile for bcs: {bcs_markerfile}')
+print(f'Loaded markerfile for bcs: {config["bcs"]["markerfile"]}')
 
 
 tol = 5e-4
@@ -158,9 +127,9 @@ chi = 140.0  # mm^{-1}
 C_m = 0.01  # mu F / mm^2
 cm2mm = 10.0
 
-t = np.arange(0, end_t, dt) 
-sigma = [sigma_il, sigma_it, sigma_el, sigma_et] 
-material_parameters = dict(a=a,a_f=a_f,b=b,b_f=b_f,a_s=a_s,b_s=b_s,a_fs=a_fs,b_fs=b_fs)
+t = np.arange(0, config["sim_dur"], config["dt"]) 
+sigma = [config["sigma_il"], config["sigma_it"], config["sigma_el"], config["sigma_et"]] 
+material_parameters = dict(a=config["mech_a"],a_f=config["mech_a_f"],b=config["mech_b"],b_f=config["mech_b_f"],a_s=config["mech_a_s"],b_s=config["mech_b_s"],a_fs=config["mech_a_fs"],b_fs=config["mech_b_fs"])
 
 
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
@@ -187,7 +156,7 @@ def define_conductivity_tensor(sigma, chi, C_m):
     return M
 
 
-def define_stimulus(mesh, chi, C_m, time, stim_region=stim_region, stim_start = stim_start, A=stim_amplitude, duration=stim_duration):
+def define_stimulus(mesh, chi, C_m, time, stim_region=stim_region,  stim_start = config["stim"]["start"], A=config["stim"]["amplitude"], duration=config["stim"]["duration"]):
     S1_marker = 1
     S1_subdomain = dolfin.CompiledSubDomain(
         ' '.join((f'x[0] >= {stim_region[0][0]}',
@@ -213,7 +182,7 @@ def define_stimulus(mesh, chi, C_m, time, stim_region=stim_region, stim_start = 
     I_s = dolfin.Expression(
         "time >= start ? (time <= (duration + start) ? amplitude : 0.0) : 0.0",
         time=time,
-        start=stim_start,
+        start=config["stim"]["start"],
         duration=duration,
         amplitude=amplitude,
         degree=0,
@@ -226,7 +195,7 @@ def define_stimulus(mesh, chi, C_m, time, stim_region=stim_region, stim_start = 
 
 # Load the model
 if not Path("ep_model.py").exists():
-    ode = gotranx.load_ode(modelfile)
+    ode = gotranx.load_ode(config["modelfile"])
 
     mechanics_comp = ode.get_component("mechanics")
     mechanics_ode = mechanics_comp.to_ode()
@@ -254,7 +223,7 @@ ep_model = _ep_model.__dict__
 
 # Get index of ep state-parameters to output
 out_indices = {} 
-for out_ep_var in out_ep:
+for out_ep_var in config["out_ep"]:
     try:
         out_indices[out_ep_var] = ep_model["state_index"](out_ep_var)
     except KeyError:
@@ -283,9 +252,9 @@ I_s = define_stimulus(mesh=ep_mesh,
                       C_m=C_m, 
                       time=time, 
                       stim_region=stim_region,
-                      stim_start=stim_start,
-                      A=stim_amplitude, 
-                      duration=stim_duration)
+                      stim_start=config["stim"]["start"],
+                      A=config["stim"]["amplitude"], 
+                      duration=config["stim"]["duration"])
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
 ep_ode_space = dolfin.FunctionSpace(ep_mesh, "CG", 1)
@@ -329,7 +298,7 @@ missing_mech.values_mechanics.T[:] = mechanics_missing_values_
 
 # Create function spaces for ep state parameters to output
 out_ep_funcs = {}
-for out_ep_var in out_ep:
+for out_ep_var in config["out_ep"]:
     out_ep_funcs[out_ep_var] = dolfin.Function(ep_ode_space)
     
 
@@ -353,7 +322,7 @@ ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
 
-def create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_markers, bcs_variables, bcs_values):
+def create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_dict):  # TODO: update to not need separate dirichlet and neumann list 
     def dirichlet_bc(W):
         bcs_W = {
             'u_x' : W.sub(0).sub(0),
@@ -366,10 +335,10 @@ def create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_markers
         for bc in bcs_dirichlet:
             bcs.append(
                 dolfin.DirichletBC(
-                    bcs_W[bcs_variables[f"{bc}"]],
-                    bcs_values[f"{bc}"],
+                    bcs_W[bcs_dict[f"{bc}"]["variable"]],
+                    bcs_dict[f"{bc}"]["func"],
                     ffun_bcs,
-                    bcs_markers[f"{bc}"],
+                    bcs_dict[f"{bc}"]["marker"]
                 ))
         return bcs
        
@@ -416,7 +385,7 @@ mech_variables = {
     'lambda': active_model.lmbda,
     }
 
-for out_mech_var in out_mech:
+for out_mech_var in config["out_mech"]:
     assert out_mech_var in mech_variables, f"Error: '{out_mech_var}' is not a valid variable name. Check config file" 
 
 material = pulse.HolzapfelOgden(
@@ -428,17 +397,12 @@ material = pulse.HolzapfelOgden(
 )
 
 
-# Make Dirichlet boundary conditions
-#def dirichlet_bc(W):
-#    V = W if W.sub(0).num_sub_spaces() == 0 else W.sub(0)
-#    return dolfin.DirichletBC(V, dolfin.Constant((0.0, 0.0, 0.0)), fixed)
-
 def compute_function_average_over_mesh(func, mesh):
     volume = dolfin.assemble(dolfin.Constant(1.0) * dolfin.dx(domain=mesh))
     return dolfin.assemble(func * dolfin.dx(domain=mesh)) / volume
 
 # Collect Boundary Conditions
-bcs = create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_markers, bcs_variables, bcs_values)
+bcs = create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, config['bcs'])
 
 problem = mechanicssolver.MechanicsProblem(geometry, material, bcs)
 problem.solve(0.0, 0.0)
@@ -448,13 +412,13 @@ disp_file.unlink(missing_ok=True)
 disp_file.with_suffix(".h5").unlink(missing_ok=True)
 
 out_ep_files = {}
-for out_ep_var in out_ep:
+for out_ep_var in config["out_ep"]:
     out_ep_files[out_ep_var] = Path(outdir /f"{out_ep_var}_out_ep.xdmf")
     out_ep_files[out_ep_var].unlink(missing_ok=True)
     out_ep_files[out_ep_var].with_suffix(".h5").unlink(missing_ok=True)
 
 out_mech_files = {}
-for out_mech_var in out_mech:
+for out_mech_var in config["out_mech"]:
     out_mech_files[out_mech_var] = Path(outdir /f"{out_mech_var}_out_mech.xdmf")
     out_mech_files[out_mech_var].unlink(missing_ok=True)
     out_mech_files[out_mech_var].with_suffix(".h5").unlink(missing_ok=True)
@@ -462,20 +426,20 @@ for out_mech_var in out_mech:
 
 # Create arrays for storing values to plot time series for example nodes
 out_ep_example_nodes = {}
-for out_ep_var in out_ep:
+for out_ep_var in config["out_ep"]:
     out_ep_example_nodes[out_ep_var] = np.zeros(len(t))
 
 out_mech_example_nodes = {}
-for out_mech_var in out_mech:
+for out_mech_var in config["out_mech"]:
     out_mech_example_nodes[out_mech_var] = np.zeros(len(t))
 
 # Create arrays for storing values to plot time series for volume averages 
 out_ep_volume_average_timeseries = {}
-for out_ep_var in out_ep:
+for out_ep_var in config["out_ep"]:
     out_ep_volume_average_timeseries[out_ep_var] = np.zeros(len(t))
 
 out_mech_volume_average_timeseries = {}
-for out_mech_var in out_mech:
+for out_mech_var in config["out_mech"]:
     out_mech_volume_average_timeseries[out_mech_var] = np.zeros(len(t))
     
         
@@ -487,31 +451,31 @@ timer = dolfin.Timer("solve_loop")
 for i, ti in enumerate(t):
     print(f"Solving time {ti:.2f} ms")
     #t_bcs.assign(ti)
-    ep_solver.step((ti, ti + dt))
+    ep_solver.step((ti, ti + config["dt"]))
 
     # Assign values to ep function
-    for out_ep_var in out_ep:
+    for out_ep_var in config["out_ep"]:
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[out_indices[out_ep_var]]
         
     # Store values to plot time series for given coord
-    for out_ep_var in out_ep_point:
-        out_ep_example_nodes[out_ep_var][i] = out_ep_funcs[out_ep_var](out_ep_point_coords[out_ep_var])
+    for out_ep_var in config["out_ep_point"]["variables"]:
+        out_ep_example_nodes[out_ep_var][i] = out_ep_funcs[out_ep_var](config["out_ep_point"][f"{out_ep_var}"])
         
-    for out_mech_var in out_mech_point:
-        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](out_mech_point_coords[out_mech_var])
+    for out_mech_var in config["out_mech_point"]["variables"]:
+        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](config["out_mech_point"][f"{out_mech_var}"])
         
     # Compute volume averages for selected parameters
-    for out_ep_var in out_ep:
+    for out_ep_var in config["out_ep"]:
         out_ep_volume_average_timeseries[out_ep_var][i] = compute_function_average_over_mesh(out_ep_funcs[out_ep_var], ep_mesh)
         
-    for out_mech_var in out_mech:
+    for out_mech_var in config["out_mech"]:
         out_mech_volume_average_timeseries[out_mech_var][i] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
 
 
-    if i % N != 0:
+    if i % config["N"] != 0:
         continue
     missing_ep_values = mv_ep(
-        ti + dt, ode._values, ode.parameters, missing_ep.values_ep
+        ti + config["dt"], ode._values, ode.parameters, missing_ep.values_ep
     )
 
     for k in range(missing_mech.num_values):
@@ -522,7 +486,7 @@ for i, ti in enumerate(t):
     inds.append(i)
 
     print("Solve mechanics")
-    problem.solve(ti, N * dt)
+    problem.solve(ti, config["N"] * config["dt"])
     active_model.update_prev()
 
     missing_ep.u_mechanics_int[0].interpolate(active_model.Zetas)
@@ -542,10 +506,10 @@ for i, ti in enumerate(t):
 
     with dolfin.XDMFFile(disp_file.as_posix()) as file:
         file.write_checkpoint(U, "disp", j, dolfin.XDMFFile.Encoding.HDF5, True)  
-    for out_ep_var in out_ep:
+    for out_ep_var in config["out_ep"]:
         with dolfin.XDMFFile(out_ep_files[out_ep_var].as_posix()) as file:
             file.write_checkpoint(out_ep_funcs[out_ep_var], out_ep_var, j, dolfin.XDMFFile.Encoding.HDF5, True)
-    for out_mech_var in out_mech:
+    for out_mech_var in config["out_mech"]:
         with dolfin.XDMFFile(out_mech_files[out_mech_var].as_posix()) as file:
             file.write_checkpoint(mech_variables[out_mech_var], out_mech_var, j, dolfin.XDMFFile.Encoding.HDF5, True)
     
@@ -561,11 +525,11 @@ with open(Path(outdir / "solve_timings.txt"), "w") as f:
     f.write(timings)
 
 # Write averaged results for later analysis    
-for out_ep_var in out_ep:
+for out_ep_var in config["out_ep"]:
     with open(Path(outdir / f"{out_ep_var}_out_ep_volume_average.txt"), "w") as f:
         np.savetxt(f, out_ep_volume_average_timeseries[out_ep_var][inds])
         
-for out_mech_var in out_mech:
+for out_mech_var in config["out_mech"]:
     with open(Path(outdir / f"{out_mech_var}_out_mech_volume_average.txt"), "w") as f:
         np.savetxt(f, out_mech_volume_average_timeseries[out_mech_var][inds])
     
@@ -574,43 +538,44 @@ print(f"Solved on {100 * len(inds) / len(t)}% of the time steps")
 inds = np.array(inds)
 
 # Plot the results
-fig, ax = plt.subplots(len(out_ep),1, figsize=(10, 10))
-if len(out_ep) == 1:
+fig, ax = plt.subplots(len(config["out_ep"]),1, figsize=(10, 10))
+if len(config["out_ep"]) == 1:
     ax = np.array([ax])
-for i, out_ep_var in enumerate(out_ep):
+for i, out_ep_var in enumerate(config["out_ep"]):
     ax[i].plot(t[inds], out_ep_volume_average_timeseries[out_ep_var][inds])
     ax[i].set_title(f"{out_ep_var} volume average")
     ax[i].set_xlabel("Time (ms)")
 fig.tight_layout()
 fig.savefig(Path(outdir /"out_ep_volume_averages.png") )
     
-fig, ax = plt.subplots(len(out_ep_point),1, figsize=(10, 10))
-if len(out_ep_point) == 1:
+fig, ax = plt.subplots(len(config["out_ep_point"]["variables"]),1, figsize=(10, 10))
+if len(config["out_ep_point"]["variables"]) == 1:
     ax = np.array([ax])
-for i, out_ep_var in enumerate(out_ep_point):
+for i, out_ep_var in enumerate(config["out_ep_point"]["variables"]):
     ax[i].plot(t[inds], out_ep_example_nodes[out_ep_var][inds])
-    ax[i].set_title(f"{out_ep_var} in coord {out_ep_point_coords[out_ep_var]}")
-    ax[i].set_xlabel("Time (ms)")
+    ax[i].set_title(f'{out_ep_var} in coord {config["out_ep_point"][f"{out_ep_var}"]}')
+    ax[i].set_title(f'{out_ep_var} in coord {config["out_ep_point"][f"{out_ep_var}"]}')
+    ax[i].set_xlabel('Time (ms)')
 fig.tight_layout()
 fig.savefig(Path(outdir /"out_ep_coord.png") )
 
-fig, ax = plt.subplots(len(out_mech),1, figsize=(10, 10))
-if len(out_mech) == 1:
+fig, ax = plt.subplots(len(config["out_mech"]),1, figsize=(10, 10))
+if len(config["out_mech"]) == 1:
     ax = np.array([ax])
-for i, out_mech_var in enumerate(out_mech):
+for i, out_mech_var in enumerate(config["out_mech"]):
     ax[i].plot(t[inds], out_mech_volume_average_timeseries[out_mech_var][inds])
     ax[i].set_title(f"{out_mech_var} volume average")
     ax[i].set_xlabel("Time (ms)")
 fig.tight_layout()
 fig.savefig(Path(outdir /"out_mech_volume_averages.png") ) 
     
-fig, ax = plt.subplots(len(out_mech_point),1, figsize=(10, 10))
-if len(out_mech_point) == 1:
+fig, ax = plt.subplots(len(config["out_mech_point"]["variables"]),1, figsize=(10, 10))
+if len(config["out_mech_point"]["variables"]) == 1:
     ax = np.array([ax])
-for i, out_mech_var in enumerate(out_mech_point):
+for i, out_mech_var in enumerate(config["out_mech_point"]["variables"]):
     ax[i].plot(t[inds], out_mech_example_nodes[out_mech_var][inds])
-    ax[i].set_title(f"{out_mech_var} in coord {out_mech_point_coords[out_mech_var]}")
-    ax[i].set_xlabel("Time (ms)")
+    ax[i].set_title(f'{out_mech_var} in coord {config["out_mech_point"][f"{out_mech_var}"]}')
+    ax[i].set_xlabel('Time (ms)')
 fig.tight_layout()
 fig.savefig(Path(outdir /"out_mech_coord.png") )
 
