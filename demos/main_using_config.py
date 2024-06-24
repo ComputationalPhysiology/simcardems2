@@ -44,53 +44,128 @@ def parse_parameters(argv: Sequence[str] | None = None) -> int:
     try:
         config = toml.loads(args["config-file"].read_text())
     except toml.TomlDecodeError as e:
-        print(f"Error when parsing parameters. Check that all parameters are defined as the correct types in config file. Error: {e}")
+        print(f"Error when parsing input parameters. Check config file. Error: {e}")
         exit(1)
     return config
 
 config = parse_parameters()
 
-def validate_input(config):    
-    number_par = ["sim_dur", 
-                  "dt", 
-                  "N", 
-                  "sigma_il", 
-                  "sigma_it", 
-                  "sigma_el", 
-                  "sigma_et", 
-                  "mech_a", 
-                  "mech_a_f",
-                  "mech_b", 
-                  "mech_b_f", 
-                  "mech_a_s", 
-                  "mech_b_s", 
-                  "mech_a_fs", 
-                  "mech_b_fs"]
+def validate_input_types(config):    
     
-    for param in number_par:
-        if not isinstance(config[param], (int, float)):
-            raise ValueError(f"Parameter '{param} = {config[param]}' is a {type(config[param]).__name__}. Provide an integer or a float")
+    # TODO: check for missing parameters and provide defaults
     
-    int_par = ["N"]
-    for param in int_par:
-        if not isinstance(config[param], (int)):
-            raise ValueError(f"Parameter '{param} = {config[param]}' is a {type(config[param]).__name__}. Provide an integer")
+    number_par = [
+        ("sim","sim_dur"), 
+        ("sim","dt"), 
+        ("sim","N"), 
+        ("ep","sigma_il"), 
+        ("ep","sigma_it"), 
+        ("ep","sigma_el"), 
+        ("ep","sigma_et"), 
+        ("mech","a"), 
+        ("mech","a_f"),
+        ("mech","b"), 
+        ("mech","b_f"), 
+        ("mech","a_s"), 
+        ("mech","b_s"), 
+        ("mech","a_fs"), 
+        ("mech","b_fs"),
+        ("stim","start"),
+        ("stim","amplitude"),
+        ("stim","duration"),
+        ("stim", "xmin"),
+        ("stim", "xmax"),
+        ("stim", "ymin"),
+        ("stim", "ymax"),
+        ("stim", "zmin"),
+        ("stim", "zmax"),
+                ]
+    int_par = [
+        ("sim","N"), 
+        ("write_all_ep","numbers"), 
+        ("write_all_mech","numbers"),
+        ("bcs", "numbers")
+               ]
+    str_par = [
+        ("sim", "mech_mesh"),
+        ("sim", "outdir"),
+        ("sim", "modelfile"),
+        ("bcs", "markerfile")
+               ]
+    
+    for section, param in number_par:    
+        assert isinstance(config[section][param], (int, float)), f"Parameter '{section}.{param} = {config[section][param]}' is a {type(config[section][param]).__name__}. Provide an integer or a float"
+    
+    for section, param in int_par: 
+        assert isinstance(config[section][param], (int)), f"Parameter '{section}.{param} = {config[section][param]}' is a {type(config[section][param]).__name__}. Provide an integer"
+
+    for section, param in str_par: 
+        assert isinstance(config[section][param], (str)), f"Parameter '{section}.{param} = {config[section][param]}' is a {type(config[section][param]).__name__}. Provide a string"
+
+    # Validate parameters for writing output
+    write_var = [
+        ("write_all_ep","numbers"), 
+        ("write_all_mech","numbers"),
+        ("write_point_ep","numbers"), 
+        ("write_point_mech","numbers"),
+        ]
+    write_var_coords = [
+        "write_point_ep", 
+        "write_point_mech",
+        ]
+    
+    bcs_types = ["Dirichlet"] # TODO: add support for NeumannBC
+    bcs_func_spaces = ["u_x", "u_y", "u_z"]
+    bcs_int_pars = [
+        "marker",
+        "param_numbers",
+        "degree"
+        ]
+    
+    for section, param in write_var:
+        for i in range(config[section][param]):            
+            assert isinstance(config[section][f"{i}"]["name"],(str)),f"Parameter '{section}.{i}.name = {config[section][f'{i}']['name']}' is a {type(config[section][f'{i}']['name']).__name__}. Provide a string"
+        
+            if section in write_var_coords:
+                for coord in ["x", "y", "z"]:
+                    assert isinstance(config[section][f"{i}"][f"{coord}"],(int, float)),f"Parameter '{section}.{i}.{coord} = {config[section][f'{i}'][f'{coord}']}' is a {type(config[section][f'{i}'][f'{coord}']).__name__}. Provide an integer or float."
+        
+
+    for bcs_nr in range(config["bcs"]["numbers"]):
+        for bcs_int_par in bcs_int_pars:
+            assert isinstance(config["bcs"][f"{bcs_nr}"][f"{bcs_int_par}"],(int)),f"Parameter 'bcs.{bcs_nr}.{bcs_int_par} = {config['bcs'][f'{bcs_nr}'][f'{bcs_int_par}']}' is a {type(config['bcs'][f'{bcs_nr}'][f'{bcs_int_par}']).__name__}. Provide an integer."
+        
+        assert config["bcs"][f"{bcs_nr}"]["type"] in bcs_types,f" Parameter 'bcs.{bcs_nr}.type = {config['bcs'][f'{bcs_nr}']['type']}' must be one of {bcs_types}."
+        assert config["bcs"][f"{bcs_nr}"]["V"] in bcs_func_spaces,f" Parameter 'bcs.{bcs_nr}.V = {config['bcs'][f'{bcs_nr}']['V']}' must be one of {bcs_func_spaces}."
+        bcs_expression = config["bcs"][f"{bcs_nr}"]["expression"]
+        assert isinstance(bcs_expression,(str)),f"Parameter 'bcs.{bcs_nr}.expression = {bcs_expression}' is a {type(bcs_expression).__name__}. Provide a string."
+
+        
+validate_input_types(config)
+
+# TODO: update to use Neumann BC from config and bcs expressions 
+
+stim_region = [config["stim"]["xmin"],config["stim"]["xmax"]],[config["stim"]["ymin"],config["stim"]["ymax"]],[config["stim"]["zmin"],config["stim"]["zmax"]]
+out_ep_var_names = [config["write_all_ep"][f"{i}"]["name"] for i in range(config["write_all_ep"]["numbers"])]
+print(f"Ep variables to write full output: {out_ep_var_names}")
+out_mech_var_names = [config["write_all_mech"][f"{i}"]["name"] for i in range(config["write_all_mech"]["numbers"])]
+print(f"Mechanics variables to write full output: {out_mech_var_names}")
+
+out_ep_coord_names = [config["write_point_ep"][f"{i}"]["name"] for i in range(config["write_point_ep"]["numbers"])]
+print(f"Ep variables to write point output: {out_ep_var_names}")
+ep_coords = [[config["write_point_ep"][f"{varnr}"][f"{coord}"] for coord in ["x", "y", "z"]] for varnr in range(config["write_point_ep"]["numbers"])]
+out_mech_coord_names = [config["write_point_mech"][f"{i}"]["name"] for i in range(config["write_point_mech"]["numbers"])]
+print(f"Mech variables to write point output: {out_mech_var_names}")
+mech_coords = [[config["write_point_mech"][f"{varnr}"][f"{coord}"] for coord in ["x", "y", "z"]] for varnr in range(config["write_point_mech"]["numbers"])]
 
 
 
-validate_input(config)
-
-# TODO: update to use Neumann BC from config
-
-stim_region = config["stim"]["xlim"], config["stim"]["ylim"], config["stim"]["zlim"]
-outdir = Path(config["outdir"])
+outdir = Path(config["sim"]["outdir"])
 outdir.mkdir(parents=True, exist_ok=True)
 
 with open(Path(outdir / "config.txt"), "w") as f:
     f.write(toml.dumps(config))
     
-print(config)
-
 #for bc in range(config['bcs']['numbers']):
 #    bcs_markers[f"{bc}"] = int(config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].marker'))
 #    bcs_types[f"{bc}"] = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].type')
@@ -136,13 +211,10 @@ for bc in range(config['bcs']['numbers']):
 
         
 
-print(f'Ep variables to output: {config["out_ep"]}')
-print(f'Mech variables to output: {config["out_mech"]}')
-
 mesh = dolfin.Mesh()
-with dolfin.XDMFFile(f'{config["mech_mesh"]}.xdmf') as infile:
+with dolfin.XDMFFile(f'{config["sim"]["mech_mesh"]}.xdmf') as infile:
     infile.read(mesh)
-print(f'Loaded mesh: {config["mech_mesh"]}')
+print(f'Loaded mesh: {config["sim"]["mech_mesh"]}')
 
 
 ffun_bcs = dolfin.MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
@@ -158,9 +230,9 @@ chi = 140.0  # mm^{-1}
 C_m = 0.01  # mu F / mm^2
 cm2mm = 10.0
 
-t = np.arange(0, config["sim_dur"], config["dt"]) 
-sigma = [config["sigma_il"], config["sigma_it"], config["sigma_el"], config["sigma_et"]] 
-material_parameters = dict(a=config["mech_a"],a_f=config["mech_a_f"],b=config["mech_b"],b_f=config["mech_b_f"],a_s=config["mech_a_s"],b_s=config["mech_b_s"],a_fs=config["mech_a_fs"],b_fs=config["mech_b_fs"])
+t = np.arange(0, config["sim"]["sim_dur"], config["sim"]["dt"]) 
+sigma = [config["ep"]["sigma_il"], config["ep"]["sigma_it"], config["ep"]["sigma_el"], config["ep"]["sigma_et"]] 
+material_parameters = dict(a=config["mech"]["a"],a_f=config["mech"]["a_f"],b=config["mech"]["b"],b_f=config["mech"]["b_f"],a_s=config["mech"]["a_s"],b_s=config["mech"]["b_s"],a_fs=config["mech"]["a_fs"],b_fs=config["mech"]["b_fs"])
 
 
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
@@ -254,7 +326,8 @@ ep_model = _ep_model.__dict__
 
 # Get index of ep state-parameters to output
 out_indices = {} 
-for out_ep_var in config["out_ep"]:
+for i in range(config["write_all_ep"]["numbers"]):
+    out_ep_var = config["write_all_ep"][f"{i}"]["name"]
     try:
         out_indices[out_ep_var] = ep_model["state_index"](out_ep_var)
     except KeyError:
@@ -329,7 +402,7 @@ missing_mech.values_mechanics.T[:] = mechanics_missing_values_
 
 # Create function spaces for ep state parameters to output
 out_ep_funcs = {}
-for out_ep_var in config["out_ep"]:
+for out_ep_var in out_ep_var_names:
     out_ep_funcs[out_ep_var] = dolfin.Function(ep_ode_space)
     
 
@@ -366,8 +439,8 @@ def create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_dict): 
         for bc in bcs_dirichlet:
             bcs.append(
                 dolfin.DirichletBC(
-                    bcs_W[bcs_dict[f"{bc}"]["variable"]],
-                    bcs_dict[f"{bc}"]["func"],
+                    bcs_W[bcs_dict[f"{bc}"]["V"]],
+                    bcs_dict[f"{bc}"]["expression"], # TODO: use dolfin expression
                     ffun_bcs,
                     bcs_dict[f"{bc}"]["marker"]
                 ))
@@ -416,7 +489,7 @@ mech_variables = {
     'lambda': active_model.lmbda,
     }
 
-for out_mech_var in config["out_mech"]:
+for out_mech_var in out_mech_coord_names:
     assert out_mech_var in mech_variables, f"Error: '{out_mech_var}' is not a valid variable name. Check config file" 
 
 material = pulse.HolzapfelOgden(
@@ -443,13 +516,13 @@ disp_file.unlink(missing_ok=True)
 disp_file.with_suffix(".h5").unlink(missing_ok=True)
 
 out_ep_files = {}
-for out_ep_var in config["out_ep"]:
+for out_ep_var in out_ep_var_names:
     out_ep_files[out_ep_var] = Path(outdir /f"{out_ep_var}_out_ep.xdmf")
     out_ep_files[out_ep_var].unlink(missing_ok=True)
     out_ep_files[out_ep_var].with_suffix(".h5").unlink(missing_ok=True)
 
 out_mech_files = {}
-for out_mech_var in config["out_mech"]:
+for out_mech_var in out_mech_coord_names:
     out_mech_files[out_mech_var] = Path(outdir /f"{out_mech_var}_out_mech.xdmf")
     out_mech_files[out_mech_var].unlink(missing_ok=True)
     out_mech_files[out_mech_var].with_suffix(".h5").unlink(missing_ok=True)
@@ -457,20 +530,20 @@ for out_mech_var in config["out_mech"]:
 
 # Create arrays for storing values to plot time series for example nodes
 out_ep_example_nodes = {}
-for out_ep_var in config["out_ep"]:
+for out_ep_var in out_ep_var_names:
     out_ep_example_nodes[out_ep_var] = np.zeros(len(t))
 
 out_mech_example_nodes = {}
-for out_mech_var in config["out_mech"]:
+for out_mech_var in out_mech_coord_names:
     out_mech_example_nodes[out_mech_var] = np.zeros(len(t))
 
 # Create arrays for storing values to plot time series for volume averages 
 out_ep_volume_average_timeseries = {}
-for out_ep_var in config["out_ep"]:
+for out_ep_var in out_ep_var_names:
     out_ep_volume_average_timeseries[out_ep_var] = np.zeros(len(t))
 
 out_mech_volume_average_timeseries = {}
-for out_mech_var in config["out_mech"]:
+for out_mech_var in out_mech_coord_names:
     out_mech_volume_average_timeseries[out_mech_var] = np.zeros(len(t))
     
         
@@ -482,31 +555,31 @@ timer = dolfin.Timer("solve_loop")
 for i, ti in enumerate(t):
     print(f"Solving time {ti:.2f} ms")
     #t_bcs.assign(ti)
-    ep_solver.step((ti, ti + config["dt"]))
+    ep_solver.step((ti, ti + config["sim"]["dt"]))
 
     # Assign values to ep function
-    for out_ep_var in config["out_ep"]:
+    for out_ep_var in out_ep_var_names:
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[out_indices[out_ep_var]]
         
     # Store values to plot time series for given coord
-    for out_ep_var in config["out_ep_point"]["variables"]:
-        out_ep_example_nodes[out_ep_var][i] = out_ep_funcs[out_ep_var](config["out_ep_point"][f"{out_ep_var}"])
-        
-    for out_mech_var in config["out_mech_point"]["variables"]:
-        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](config["out_mech_point"][f"{out_mech_var}"])
-        
-    # Compute volume averages for selected parameters
-    for out_ep_var in config["out_ep"]:
+    for var_nr in range(config["write_point_ep"]["numbers"]):
+        out_ep_var = config["write_point_ep"][f"{var_nr}"]["name"]
+        out_ep_example_nodes[out_ep_var][i] = out_ep_funcs[out_ep_var](ep_coords[var_nr])
+        # Compute volume averages
         out_ep_volume_average_timeseries[out_ep_var][i] = compute_function_average_over_mesh(out_ep_funcs[out_ep_var], ep_mesh)
         
-    for out_mech_var in config["out_mech"]:
+    for var_nr in range(config["write_point_mech"]["numbers"]):
+        out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
+        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](mech_coords[var_nr])  
+        
+        # Compute volume averages 
         out_mech_volume_average_timeseries[out_mech_var][i] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
 
 
-    if i % config["N"] != 0:
+    if i % config["sim"]["N"] != 0:
         continue
     missing_ep_values = mv_ep(
-        ti + config["dt"], ode._values, ode.parameters, missing_ep.values_ep
+        ti + config["sim"]["dt"], ode._values, ode.parameters, missing_ep.values_ep
     )
 
     for k in range(missing_mech.num_values):
@@ -517,7 +590,7 @@ for i, ti in enumerate(t):
     inds.append(i)
 
     print("Solve mechanics")
-    problem.solve(ti, config["N"] * config["dt"])
+    problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
     active_model.update_prev()
 
     missing_ep.u_mechanics_int[0].interpolate(active_model.Zetas)
@@ -537,10 +610,10 @@ for i, ti in enumerate(t):
 
     with dolfin.XDMFFile(disp_file.as_posix()) as file:
         file.write_checkpoint(U, "disp", j, dolfin.XDMFFile.Encoding.HDF5, True)  
-    for out_ep_var in config["out_ep"]:
+    for out_ep_var in out_ep_var_names:
         with dolfin.XDMFFile(out_ep_files[out_ep_var].as_posix()) as file:
             file.write_checkpoint(out_ep_funcs[out_ep_var], out_ep_var, j, dolfin.XDMFFile.Encoding.HDF5, True)
-    for out_mech_var in config["out_mech"]:
+    for out_mech_var in out_mech_coord_names:
         with dolfin.XDMFFile(out_mech_files[out_mech_var].as_posix()) as file:
             file.write_checkpoint(mech_variables[out_mech_var], out_mech_var, j, dolfin.XDMFFile.Encoding.HDF5, True)
     
@@ -556,11 +629,11 @@ with open(Path(outdir / "solve_timings.txt"), "w") as f:
     f.write(timings)
 
 # Write averaged results for later analysis    
-for out_ep_var in config["out_ep"]:
+for out_ep_var in out_ep_var_names:
     with open(Path(outdir / f"{out_ep_var}_out_ep_volume_average.txt"), "w") as f:
         np.savetxt(f, out_ep_volume_average_timeseries[out_ep_var][inds])
         
-for out_mech_var in config["out_mech"]:
+for out_mech_var in out_mech_coord_names:
     with open(Path(outdir / f"{out_mech_var}_out_mech_volume_average.txt"), "w") as f:
         np.savetxt(f, out_mech_volume_average_timeseries[out_mech_var][inds])
     
@@ -569,44 +642,46 @@ print(f"Solved on {100 * len(inds) / len(t)}% of the time steps")
 inds = np.array(inds)
 
 # Plot the results
-fig, ax = plt.subplots(len(config["out_ep"]),1, figsize=(10, 10))
-if len(config["out_ep"]) == 1:
+fig, ax = plt.subplots(len(out_ep_var_names),1, figsize=(10, 10))
+if len(out_ep_var_names) == 1:
     ax = np.array([ax])
-for i, out_ep_var in enumerate(config["out_ep"]):
+for i, out_ep_var in enumerate(out_ep_var_names):
     ax[i].plot(t[inds], out_ep_volume_average_timeseries[out_ep_var][inds])
     ax[i].set_title(f"{out_ep_var} volume average")
     ax[i].set_xlabel("Time (ms)")
 fig.tight_layout()
 fig.savefig(Path(outdir /"out_ep_volume_averages.png") )
     
-fig, ax = plt.subplots(len(config["out_ep_point"]["variables"]),1, figsize=(10, 10))
-if len(config["out_ep_point"]["variables"]) == 1:
-    ax = np.array([ax])
-for i, out_ep_var in enumerate(config["out_ep_point"]["variables"]):
-    ax[i].plot(t[inds], out_ep_example_nodes[out_ep_var][inds])
-    ax[i].set_title(f'{out_ep_var} in coord {config["out_ep_point"][f"{out_ep_var}"]}')
-    ax[i].set_title(f'{out_ep_var} in coord {config["out_ep_point"][f"{out_ep_var}"]}')
-    ax[i].set_xlabel('Time (ms)')
+fig, ax = plt.subplots(len(out_ep_coord_names),1, figsize=(10, 10))
+if len(out_ep_coord_names) == 1:
+    ax = np.array([ax])    
+for var_nr in range(config["write_point_ep"]["numbers"]):
+    out_ep_var = config["write_point_ep"][f"{var_nr}"]["name"]
+    ax[var_nr].plot(t[inds], out_ep_example_nodes[out_ep_var][inds])
+    ax[var_nr].set_title(f'{out_ep_var} in coord {ep_coords[var_nr]}')
+    ax[var_nr].set_xlabel('Time (ms)')
 fig.tight_layout()
 fig.savefig(Path(outdir /"out_ep_coord.png") )
 
-fig, ax = plt.subplots(len(config["out_mech"]),1, figsize=(10, 10))
-if len(config["out_mech"]) == 1:
+fig, ax = plt.subplots(len(out_mech_coord_names),1, figsize=(10, 10))
+if len(out_mech_coord_names) == 1:
     ax = np.array([ax])
-for i, out_mech_var in enumerate(config["out_mech"]):
+for i, out_mech_var in enumerate(out_mech_coord_names):
     ax[i].plot(t[inds], out_mech_volume_average_timeseries[out_mech_var][inds])
     ax[i].set_title(f"{out_mech_var} volume average")
     ax[i].set_xlabel("Time (ms)")
 fig.tight_layout()
 fig.savefig(Path(outdir /"out_mech_volume_averages.png") ) 
     
-fig, ax = plt.subplots(len(config["out_mech_point"]["variables"]),1, figsize=(10, 10))
-if len(config["out_mech_point"]["variables"]) == 1:
+fig, ax = plt.subplots(len(out_mech_coord_names),1, figsize=(10, 10))
+if len(out_mech_coord_names) == 1:
     ax = np.array([ax])
-for i, out_mech_var in enumerate(config["out_mech_point"]["variables"]):
-    ax[i].plot(t[inds], out_mech_example_nodes[out_mech_var][inds])
-    ax[i].set_title(f'{out_mech_var} in coord {config["out_mech_point"][f"{out_mech_var}"]}')
-    ax[i].set_xlabel('Time (ms)')
+ 
+for var_nr in range(config["write_point_mech"]["numbers"]):
+    out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
+    ax[var_nr].plot(t[inds], out_mech_example_nodes[out_mech_var][inds])
+    ax[var_nr].set_title(f'{out_mech_var} in coord {mech_coords[var_nr]}')
+    ax[var_nr].set_xlabel('Time (ms)')
 fig.tight_layout()
 fig.savefig(Path(outdir /"out_mech_coord.png") )
 
