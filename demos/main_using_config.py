@@ -19,6 +19,7 @@ from simcardems2 import utils
 from simcardems2 import mechanicssolver
 from simcardems2 import interpolation
 from simcardems2.land import LandModel
+from validate_input_types import validate_input_types
 
 
 try:
@@ -50,100 +51,7 @@ def parse_parameters(argv: Sequence[str] | None = None) -> int:
 
 config = parse_parameters()
 
-def validate_input_types(config):    
-    
-    # TODO: check for missing parameters and provide defaults
-    
-    number_par = [
-        ("sim","sim_dur"), 
-        ("sim","dt"), 
-        ("sim","N"), 
-        ("ep","sigma_il"), 
-        ("ep","sigma_it"), 
-        ("ep","sigma_el"), 
-        ("ep","sigma_et"), 
-        ("mech","a"), 
-        ("mech","a_f"),
-        ("mech","b"), 
-        ("mech","b_f"), 
-        ("mech","a_s"), 
-        ("mech","b_s"), 
-        ("mech","a_fs"), 
-        ("mech","b_fs"),
-        ("stim","start"),
-        ("stim","amplitude"),
-        ("stim","duration"),
-        ("stim", "xmin"),
-        ("stim", "xmax"),
-        ("stim", "ymin"),
-        ("stim", "ymax"),
-        ("stim", "zmin"),
-        ("stim", "zmax"),
-                ]
-    int_par = [
-        ("sim","N"), 
-        ("write_all_ep","numbers"), 
-        ("write_all_mech","numbers"),
-        ("bcs", "numbers")
-               ]
-    str_par = [
-        ("sim", "mech_mesh"),
-        ("sim", "outdir"),
-        ("sim", "modelfile"),
-        ("bcs", "markerfile")
-               ]
-    
-    for section, param in number_par:    
-        assert isinstance(config[section][param], (int, float)), f"Parameter '{section}.{param} = {config[section][param]}' is a {type(config[section][param]).__name__}. Provide an integer or a float"
-    
-    for section, param in int_par: 
-        assert isinstance(config[section][param], (int)), f"Parameter '{section}.{param} = {config[section][param]}' is a {type(config[section][param]).__name__}. Provide an integer"
-
-    for section, param in str_par: 
-        assert isinstance(config[section][param], (str)), f"Parameter '{section}.{param} = {config[section][param]}' is a {type(config[section][param]).__name__}. Provide a string"
-
-    # Validate parameters for writing output
-    write_var = [
-        ("write_all_ep","numbers"), 
-        ("write_all_mech","numbers"),
-        ("write_point_ep","numbers"), 
-        ("write_point_mech","numbers"),
-        ]
-    write_var_coords = [
-        "write_point_ep", 
-        "write_point_mech",
-        ]
-    
-    bcs_types = ["Dirichlet"] # TODO: add support for NeumannBC
-    bcs_func_spaces = ["u_x", "u_y", "u_z"]
-    bcs_int_pars = [
-        "marker",
-        "param_numbers",
-        "degree"
-        ]
-    
-    for section, param in write_var:
-        for i in range(config[section][param]):            
-            assert isinstance(config[section][f"{i}"]["name"],(str)),f"Parameter '{section}.{i}.name = {config[section][f'{i}']['name']}' is a {type(config[section][f'{i}']['name']).__name__}. Provide a string"
-        
-            if section in write_var_coords:
-                for coord in ["x", "y", "z"]:
-                    assert isinstance(config[section][f"{i}"][f"{coord}"],(int, float)),f"Parameter '{section}.{i}.{coord} = {config[section][f'{i}'][f'{coord}']}' is a {type(config[section][f'{i}'][f'{coord}']).__name__}. Provide an integer or float."
-        
-
-    for bcs_nr in range(config["bcs"]["numbers"]):
-        for bcs_int_par in bcs_int_pars:
-            assert isinstance(config["bcs"][f"{bcs_nr}"][f"{bcs_int_par}"],(int)),f"Parameter 'bcs.{bcs_nr}.{bcs_int_par} = {config['bcs'][f'{bcs_nr}'][f'{bcs_int_par}']}' is a {type(config['bcs'][f'{bcs_nr}'][f'{bcs_int_par}']).__name__}. Provide an integer."
-        
-        assert config["bcs"][f"{bcs_nr}"]["type"] in bcs_types,f" Parameter 'bcs.{bcs_nr}.type = {config['bcs'][f'{bcs_nr}']['type']}' must be one of {bcs_types}."
-        assert config["bcs"][f"{bcs_nr}"]["V"] in bcs_func_spaces,f" Parameter 'bcs.{bcs_nr}.V = {config['bcs'][f'{bcs_nr}']['V']}' must be one of {bcs_func_spaces}."
-        bcs_expression = config["bcs"][f"{bcs_nr}"]["expression"]
-        assert isinstance(bcs_expression,(str)),f"Parameter 'bcs.{bcs_nr}.expression = {bcs_expression}' is a {type(bcs_expression).__name__}. Provide a string."
-
-        
 validate_input_types(config)
-
-# TODO: update to use Neumann BC from config and bcs expressions 
 
 stim_region = [config["stim"]["xmin"],config["stim"]["xmax"]],[config["stim"]["ymin"],config["stim"]["ymax"]],[config["stim"]["zmin"],config["stim"]["zmax"]]
 out_ep_var_names = [config["write_all_ep"][f"{i}"]["name"] for i in range(config["write_all_ep"]["numbers"])]
@@ -166,41 +74,12 @@ outdir.mkdir(parents=True, exist_ok=True)
 with open(Path(outdir / "config.txt"), "w") as f:
     f.write(toml.dumps(config))
     
-#for bc in range(config['bcs']['numbers']):
-#    bcs_markers[f"{bc}"] = int(config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].marker'))
-#    bcs_types[f"{bc}"] = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].type')
-#    bcs_variables[f"{bc}"] = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].variable')
-    
-#    bcs_val = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].func')
-    
-    # Try converting bcs to float, otherwise treat as function
-#    try:
-#        bcs_values[f"{bc}"] = dolfin.Constant(float(bcs_val))
-#    except ValueError:
-#        print(f"Function bcs: {bcs_val}")
-        #bcs_values[f"{bc}"] = dolfin.Expression('alpha*t', alpha=traction_alpha, t=t_bcs, degree=0)
-        
-        
-        # TODO: update so you can use functions as bcs
-        
-        #bcs_func_params = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].func_params').split(',')
-    
-        #parameters_dict = {str(param): 0 for param in bcs_func_params}
-        #bcs_values[f"{bc}"] = dolfin.Expression(bcs_val,**parameters_dict, t=t_bcs)
-    
-        #for i, param in enumerate(bcs_func_params):
-        #    print(i, param)
-        #    param_value = config.get('BOUNDARY CONDITIONS', f'bcs[{bc}].func_params.{param}')
-        #    bcs_values[f"{bc}"].user_parameters[param] = param_value
-            
 
-
-
-
-
-# TODO: do a different check than this later. something smoother
+# TODO: do a different dirichlet/neumann check than this later. something smoother
+t_bcs = dolfin.Constant(0)
 bcs_dirichlet = []
 bcs_neumann = []
+bcs_expressions = {}
 for bc in range(config['bcs']['numbers']):
     if config['bcs'][f"{bc}"]['type'] == 'Dirichlet':
         bcs_dirichlet.append(bc)
@@ -208,9 +87,19 @@ for bc in range(config['bcs']['numbers']):
         bcs_neumann.append(bc)
     else:
         raise KeyError(f'{config["bcs"][f"{bc}"]["type"]} is not a valid type of boundary condition. Use Dirichlet or Neumann. Check config file')
-
-        
-
+    
+    if config["bcs"][f"{bc}"]['param_numbers'] > 0:
+        bcs_parameters = {}
+        for param_nr in range(config["bcs"][f"{bc}"]["param_numbers"]):
+            param_name = config["bcs"][f"{bc}"]["param"][f"{param_nr}"]["name"]
+            param_value = config["bcs"][f"{bc}"]["param"][f"{param_nr}"]["value"]
+            bcs_parameters[param_name] = param_value
+        bcs_expressions[f"{bc}"] = dolfin.Expression(config["bcs"][f"{bc}"]["expression"], **bcs_parameters, t=t_bcs, degree=config["bcs"][f"{bc}"]["degree"]) 
+    else:
+        bcs_expressions[f"{bc}"] = dolfin.Constant(0)
+   
+ 
+   
 mesh = dolfin.Mesh()
 with dolfin.XDMFFile(f'{config["sim"]["mech_mesh"]}.xdmf') as infile:
     infile.read(mesh)
@@ -426,7 +315,7 @@ ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
 
-def create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_dict):  # TODO: update to not need separate dirichlet and neumann list 
+def create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_dict, bcs_expressions):  # TODO: update to not need separate dirichlet and neumann list 
     def dirichlet_bc(W):
         bcs_W = {
             'u_x' : W.sub(0).sub(0),
@@ -440,7 +329,7 @@ def create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_dict): 
             bcs.append(
                 dolfin.DirichletBC(
                     bcs_W[bcs_dict[f"{bc}"]["V"]],
-                    bcs_dict[f"{bc}"]["expression"], # TODO: use dolfin expression
+                    bcs_expressions[f"{bc}"], # TODO: use dolfin expression
                     ffun_bcs,
                     bcs_dict[f"{bc}"]["marker"]
                 ))
@@ -448,13 +337,13 @@ def create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, bcs_dict): 
        
     neumann_bc = []
     # TODO: add support for using neumann 
-    #if bcs_neumann is not None:
-    #    for bc in bcs_neumann:
-    #        neumann_bc.append(
-    #            pulse.NeumannBC(
-    #                traction=utils.float_to_constant(bcs_values[f"{bc}"]),
-    #                marker=bcs_markers[f"{bc}"],
-    #            ))
+    if bcs_neumann is not None:
+        for bc in bcs_neumann:
+            neumann_bc.append(
+                pulse.NeumannBC(
+                    traction=utils.float_to_constant(bcs_expressions[f"{bc}"]),
+                    marker=bcs_dict[f"{bc}"]["marker"],
+                ))
         
     # Collect Boundary Conditions
     bcs = pulse.BoundaryConditions(dirichlet=(dirichlet_bc,),neumann=neumann_bc)
@@ -506,7 +395,7 @@ def compute_function_average_over_mesh(func, mesh):
     return dolfin.assemble(func * dolfin.dx(domain=mesh)) / volume
 
 # Collect Boundary Conditions
-bcs = create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, config['bcs'])
+bcs = create_boundary_conditions(ffun_bcs, bcs_dirichlet, bcs_neumann, config['bcs'], bcs_expressions)
 
 problem = mechanicssolver.MechanicsProblem(geometry, material, bcs)
 problem.solve(0.0, 0.0)
@@ -554,7 +443,7 @@ theta = 0.5
 timer = dolfin.Timer("solve_loop")
 for i, ti in enumerate(t):
     print(f"Solving time {ti:.2f} ms")
-    #t_bcs.assign(ti)
+    t_bcs.assign(ti)
     ep_solver.step((ti, ti + config["sim"]["dt"]))
 
     # Assign values to ep function

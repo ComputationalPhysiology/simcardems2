@@ -2,10 +2,10 @@
 
 # SIMULATION PARAMETERS
 sim.mech_mesh = "mesh_mech_3.0" # mechanics mesh filepath without extension
-sim.outdir = "test_config_21ms_N10_try_to_break" # Output directory
-sim.sim_dur = 21 # Duration of simulation. Integer
+sim.outdir = "test_config_59ms_N10_Neumann_nostim_corderfix" # Output directory
+sim.sim_dur = 59 # Duration of simulation. Integer
 sim.dt = 0.05 # Timestep for ep solve
-sim.N = 10 # Solve mechanics step every nth ep solve
+sim.N = 1 # Solve mechanics step every nth ep solve
 
 # MODEL PARAMETERS
 sim.modelfile = "ORdmm_Land.ode"
@@ -54,7 +54,7 @@ mech.b_fs=0.0
 
 # STIMULUS PARAMETERS
 stim.start = 0.0
-stim.amplitude = 50000.0 # mu A/cm^3
+stim.amplitude = 0# 50000.0 # mu A/cm^3
 stim.duration = 2 # ms  
 stim.xmin = 0.0
 stim.xmax = 1.5
@@ -65,7 +65,7 @@ stim.zmax = 1.5
 
 # BOUNDARY CONDITIONS
 #bcs = 4 # TODO: Add  neuman and function as bcs
-bcs.numbers = 3
+bcs.numbers = 4
 bcs.markerfile = "mesh_mech_3dx_20Lx_7Ly_3Lz_surface_ffun"
 
 # Mesh markers used for assigning bcs
@@ -76,24 +76,25 @@ bcs.0.expression = '0'
 bcs.0.param_numbers = 0
 bcs.0.degree = 0 # TODO: unsure about this option
 
-bcs.1.marker = 1 #3 # if same marker for ux,uy,uz, (e.g. marker = 1), then fixes the entire plane (plane with marker == 1)
+bcs.1.marker = 3 # if same marker for ux,uy,uz, (e.g. marker = 1), then fixes the entire plane (plane with marker == 1)
 bcs.1.type = "Dirichlet"
 bcs.1.V = "u_y"
 bcs.1.expression = '0'
 bcs.1.param_numbers = 0
 bcs.1.degree = 0
 
-bcs.2.marker = 1 #5
+bcs.2.marker = 5
 bcs.2.type = "Dirichlet"
 bcs.2.V = "u_z"
 bcs.2.expression = '0'
 bcs.2.param_numbers = 0
 bcs.2.degree = 0
 
-#bcs.3.marker = 2
-#bcs.3.type = "Neumann"
-#bcs.3.variable = None # Temporary. TODO: update to use this or remove
-#bcs.3.func = a*t # Value can be a function of t
-#bcs.3.func_params = a
-#bcs.3.func_params.a = -2
+bcs.3.marker = 2
+bcs.3.type = "Neumann"
+bcs.3.expression = 'a*t' # Value can be a function of t
+bcs.3.param_numbers = 1
+bcs.3.param.0.name = 'a'
+bcs.3.param.0.value = -2
+bcs.3.degree = 0
 
