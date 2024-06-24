@@ -76,7 +76,7 @@ def validate_input_types(config):
 
     bcs_types = ["Dirichlet", "Neumann"]
     bcs_func_spaces = ["u_x", "u_y", "u_z"]
-    bcs_int_pars = ["marker", "param_numbers", "degree"]
+    bcs_int_pars = ["marker", "param_numbers"]
 
 
     for section, param in write_var:
@@ -113,18 +113,17 @@ def validate_input_types(config):
             assert bcs_V in bcs_func_spaces, (
                 f"Parameter 'bcs.{bcs_nr}.V = {bcs_V}' must be one of {bcs_func_spaces}."
             )
-    
-        bcs_expression = config["bcs"][str(bcs_nr)]["expression"]
-        assert isinstance(bcs_expression, str), (
-            f"Parameter 'bcs.{bcs_nr}.expression = {bcs_expression}' is a "
-            f"{type(bcs_expression).__name__}. Provide a string."
-        )
-    
+        
         for param_nr in range(config["bcs"][str(bcs_nr)]["param_numbers"]):
             param_name = config["bcs"][str(bcs_nr)]["param"][str(param_nr)]["name"]
             assert isinstance(param_name, str), (
                 f"Parameter 'bcs.{bcs_nr}.param.{param_nr}.name = {param_name}' is a "
                 f"{type(param_name).__name__}. Provide a string."
+            )
+            bcs_int_value = config["bcs"][str(bcs_nr)]["degree"] # When bcs expression is given instead of constant, check the "degree" type
+            assert isinstance(bcs_int_value, int), (
+                f"Parameter 'bcs.{bcs_nr}.degree = {bcs_int_value}' is a "
+                f"{type(bcs_int_value).__name__}. Provide an integer."
             )
     
             param_value = config["bcs"][str(bcs_nr)]["param"][str(param_nr)]["value"]
