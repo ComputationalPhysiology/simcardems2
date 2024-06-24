@@ -63,18 +63,14 @@ out_ep_var_names = [
     config["write_all_ep"][f"{i}"]["name"]
     for i in range(config["write_all_ep"]["numbers"])
 ]
-print(f"Ep variables to write full output: {out_ep_var_names}")
 out_mech_var_names = [
     config["write_all_mech"][f"{i}"]["name"]
     for i in range(config["write_all_mech"]["numbers"])
 ]
-print(f"Mechanics variables to write full output: {out_mech_var_names}")
-
 out_ep_coord_names = [
     config["write_point_ep"][f"{i}"]["name"]
     for i in range(config["write_point_ep"]["numbers"])
 ]
-print(f"Ep variables to write point output: {out_ep_var_names}")
 ep_coords = [
     [config["write_point_ep"][f"{varnr}"][f"{coord}"] for coord in ["x", "y", "z"]]
     for varnr in range(config["write_point_ep"]["numbers"])
@@ -83,7 +79,6 @@ out_mech_coord_names = [
     config["write_point_mech"][f"{i}"]["name"]
     for i in range(config["write_point_mech"]["numbers"])
 ]
-print(f"Mech variables to write point output: {out_mech_var_names}")
 mech_coords = [
     [config["write_point_mech"][f"{varnr}"][f"{coord}"] for coord in ["x", "y", "z"]]
     for varnr in range(config["write_point_mech"]["numbers"])
@@ -225,7 +220,6 @@ def define_stimulus(
     factor = 1.0 / (chi * C_m)  # NB: cbcbeat convention
     amplitude = factor * A * (1.0 / cm2mm) ** 3  # mV/ms
 
-    print(f"duration: {duration}, amplitude: {amplitude}")
     I_s = dolfin.Expression(
         "time >= start ? (time <= (duration + start) ? amplitude : 0.0) : 0.0",
         time=time,

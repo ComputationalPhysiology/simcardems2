@@ -92,5 +92,5 @@ bcs.3.expression = 'a*t' # Value can be a function of t
 bcs.3.param_numbers = 1
 bcs.3.param.0.name = 'a'
 bcs.3.param.0.value = -0.2
-bcs.3.degree = 0
+bcs.3.degree = 1
 

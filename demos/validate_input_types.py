@@ -120,7 +120,8 @@ def validate_input_types(config):
                 f"Parameter 'bcs.{bcs_nr}.param.{param_nr}.name = {param_name}' is a "
                 f"{type(param_name).__name__}. Provide a string."
             )
-            bcs_int_value = config["bcs"][str(bcs_nr)]["degree"] # When bcs expression is given instead of constant, check the "degree" type
+            # When bcs expression is given instead of constant, check the "degree" type
+            bcs_int_value = config["bcs"][str(bcs_nr)]["degree"] 
             assert isinstance(bcs_int_value, int), (
                 f"Parameter 'bcs.{bcs_nr}.degree = {bcs_int_value}' is a "
                 f"{type(bcs_int_value).__name__}. Provide an integer."
