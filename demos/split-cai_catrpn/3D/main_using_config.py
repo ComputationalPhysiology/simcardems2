@@ -20,8 +20,8 @@ from simcardems2 import utils
 from simcardems2 import mechanicssolver
 from simcardems2 import interpolation
 from simcardems2.land_CaTrpn import LandModel
+from simcardems2.validate_input_types import validate_input_types
 
-from validate_input_types import validate_input_types
 
 
 try:
