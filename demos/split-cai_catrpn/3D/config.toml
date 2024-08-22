@@ -2,8 +2,8 @@
 
 # SIMULATION PARAMETERS
 sim.mech_mesh = "mesh_mech_3.0" # mechanics mesh filepath without extension
-sim.outdir = "10ms_N10_catrpn_split" # Output directory
-sim.sim_dur = 10 # Duration of simulation. Integer
+sim.outdir = "1ms_N10_catrpn_split" # Output directory
+sim.sim_dur = 1 # Duration of simulation. Integer
 sim.dt = 0.05 # Timestep for ep solve
 sim.N = 10 # Solve mechanics step every nth ep solve
 
@@ -103,7 +103,7 @@ bcs.2.expression = 0
 bcs.2.param_numbers = 0
 
 bcs.3.marker = 2
-bcs.3.type = "Neumann"
+bcs.3.type = "Neumann" # NB: Neumann not yet supported. TODO: implement in main
 bcs.3.expression = 'a*t' # Value can be a function of t
 bcs.3.param_numbers = 1
 bcs.3.param.0.name = 'a'

@@ -2,7 +2,7 @@
 
 # SIMULATION PARAMETERS
 sim.mech_mesh = "mesh_mech_3.0" # mechanics mesh filepath without extension
-sim.outdir = "1ms_N10_zeta_split" # Output directory
+sim.outdir = "1ms_N10_cai_split" # Output directory
 sim.sim_dur = 1 # Duration of simulation. Integer
 sim.dt = 0.05 # Timestep for ep solve
 sim.N = 10 # Solve mechanics step every nth ep solve
@@ -19,7 +19,7 @@ write_all_mech.numbers = 2
 write_all_mech.0.name = "Ta"
 write_all_mech.1.name = "lambda"
 
-write_point_ep.numbers = 4
+write_point_ep.numbers = 2
 write_point_ep.0.name = "cai"
 write_point_ep.0.x = 0.0
 write_point_ep.0.y = 0
@@ -28,16 +28,8 @@ write_point_ep.1.name =	"v"
 write_point_ep.1.x = 0
 write_point_ep.1.y = 0
 write_point_ep.1.z = 0
-write_point_ep.2.name = "CaTrpn"
-write_point_ep.2.x = 0
-write_point_ep.2.y = 0
-write_point_ep.2.z = 0
-write_point_ep.3.name = "TmB"
-write_point_ep.3.x = 0
-write_point_ep.3.y = 0
-write_point_ep.3.z = 0
 
-write_point_mech.numbers = 3
+write_point_mech.numbers = 5
 write_point_mech.0.name = "Ta"
 write_point_mech.0.x = 0
 write_point_mech.0.y = 0
@@ -50,6 +42,15 @@ write_point_mech.2.name = "XS"
 write_point_mech.2.x = 0
 write_point_mech.2.y = 0
 write_point_mech.2.z = 0
+write_point_mech.3.name = "TmB"
+write_point_mech.3.x = 0
+write_point_mech.3.y = 0
+write_point_mech.3.z = 0
+write_point_mech.4.name = "CaTrpn"
+write_point_mech.4.x = 0
+write_point_mech.4.y = 0
+write_point_mech.4.z = 0
+
 
 # Tissue conductivity values. Currently only a single region, from p.4339 of Niederer benchmark
 ep.sigma_il = 0.17  # mS / mm
