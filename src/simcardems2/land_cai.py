@@ -211,6 +211,9 @@ class LandModel(pulse.ActiveModel):
         self.CaTrpn_prev =  dolfin.Function(self.function_space)
         if CaTrpn is not None:
             self.CaTrpn_prev.assign(CaTrpn)
+        else: # Set initial Catrpn value
+            self._CaTrpn.interpolate(dolfin.Constant(0.0001))
+            self.CaTrpn_prev.interpolate(dolfin.Constant(0.0001))
         """ """
             
 
