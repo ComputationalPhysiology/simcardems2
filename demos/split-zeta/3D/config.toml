@@ -19,6 +19,7 @@ write_all_mech.numbers = 2
 write_all_mech.0.name = "Ta"
 write_all_mech.1.name = "lambda"
 
+# Currently also outputting volume averages for these:
 write_point_ep.numbers = 4
 write_point_ep.0.name = "cai"
 write_point_ep.0.x = 0.0

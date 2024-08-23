@@ -263,22 +263,13 @@ import ep_model as _ep_model
 ep_model = _ep_model.__dict__
 
 
-# Validate ep variables to output for all nodes
-for i in out_ep_var_names:
+# Validate ep variables to output 
+for i in list(set(out_ep_coord_names) | set(out_ep_var_names)):
     try:
         var = ep_model["state_index"](i)
     except KeyError:
         print(f"{i} is not an ep state. Check config file")
         raise
-
-# Validate ep variables to output for single coord or volume average
-for i in out_ep_coord_names: 
-    try:
-        var = ep_model["state_index"](i)
-    except KeyError:
-        print(f"{i} is not an ep state. Check config file")
-        raise
-
 
 # Forwared generalized rush larsen scheme for the electrophysiology model
 fgr_ep = jit(nopython=True)(ep_model["forward_generalized_rush_larsen"])
@@ -444,7 +435,8 @@ mech_variables = {
     "XW":active_model.XW,
 }
 
-for out_mech_var in out_mech_coord_names:
+# Validate mechanics variables to output
+for out_mech_var in list(set(out_mech_coord_names) | set(out_mech_var_names)):
     assert (
         out_mech_var in mech_variables
     ), f"Error: '{out_mech_var}' is not a valid variable name. Check config file"
@@ -482,7 +474,7 @@ for out_ep_var in out_ep_var_names:
     out_ep_files[out_ep_var].with_suffix(".h5").unlink(missing_ok=True)
 
 out_mech_files = {}
-for out_mech_var in out_mech_coord_names:
+for out_mech_var in out_mech_var_names:
     out_mech_files[out_mech_var] = Path(outdir / f"{out_mech_var}_out_mech.xdmf")
     out_mech_files[out_mech_var].unlink(missing_ok=True)
     out_mech_files[out_mech_var].with_suffix(".h5").unlink(missing_ok=True)
@@ -586,7 +578,7 @@ for i, ti in enumerate(t):
                 dolfin.XDMFFile.Encoding.HDF5,
                 True,
             )
-    for out_mech_var in out_mech_coord_names:
+    for out_mech_var in out_mech_var_names:
         with dolfin.XDMFFile(out_mech_files[out_mech_var].as_posix()) as file:
             file.write_checkpoint(
                 mech_variables[out_mech_var],
@@ -607,7 +599,7 @@ with open(Path(outdir / "solve_timings.txt"), "w") as f:
     f.write(timings)
 
 # Write averaged results for later analysis
-for out_ep_var in out_ep_var_names:
+for out_ep_var in out_ep_coord_names:
     with open(Path(outdir / f"{out_ep_var}_out_ep_volume_average.txt"), "w") as f:
         np.savetxt(f, out_ep_volume_average_timeseries[out_ep_var][inds])
 
@@ -615,15 +607,25 @@ for out_mech_var in out_mech_coord_names:
     with open(Path(outdir / f"{out_mech_var}_out_mech_volume_average.txt"), "w") as f:
         np.savetxt(f, out_mech_volume_average_timeseries[out_mech_var][inds])
 
+# Write point traces for later analysis
+for var_nr in range(config["write_point_ep"]["numbers"]):
+    out_ep_var = config["write_point_ep"][f"{var_nr}"]["name"]
+    with open(Path(outdir / f"{out_ep_var}_ep_coord{ep_coords[var_nr][0]},{ep_coords[var_nr][1]},{ep_coords[var_nr][2]}.txt".replace(" ", "")), "w") as f:
+         np.savetxt(f, out_ep_example_nodes[out_ep_var][inds])
+
+for var_nr in range(config["write_point_mech"]["numbers"]):
+    out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
+    with open(Path(outdir / f"{out_mech_var}_mech_coord{mech_coords[var_nr][0]},{mech_coords[var_nr][1]},{mech_coords[var_nr][2]}.txt"), "w") as f:
+        np.savetxt(f, out_mech_example_nodes[out_mech_var][inds])
 
 print(f"Solved on {100 * len(inds) / len(t)}% of the time steps")
 inds = np.array(inds)
 
 # Plot the results
-fig, ax = plt.subplots(len(out_ep_var_names), 1, figsize=(10, 10))
-if len(out_ep_var_names) == 1:
+fig, ax = plt.subplots(len(out_ep_coord_names), 1, figsize=(10, 10))
+if len(out_ep_coord_names) == 1:
     ax = np.array([ax])
-for i, out_ep_var in enumerate(out_ep_var_names):
+for i, out_ep_var in enumerate(out_ep_coord_names):
     ax[i].plot(t[inds], out_ep_volume_average_timeseries[out_ep_var][inds])
     ax[i].set_title(f"{out_ep_var} volume average")
     ax[i].set_xlabel("Time (ms)")

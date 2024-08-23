@@ -2,10 +2,10 @@
 
 # SIMULATION PARAMETERS
 sim.mech_mesh = "mesh_mech_3.0" # mechanics mesh filepath without extension
-sim.outdir = "1ms_N10_cai_split" # Output directory
+sim.outdir = "1ms_N1_cai_split" # Output directory
 sim.sim_dur = 1 # Duration of simulation. Integer
 sim.dt = 0.05 # Timestep for ep solve
-sim.N = 10 # Solve mechanics step every nth ep solve
+sim.N = 1 # Solve mechanics step every nth ep solve
 
 # MODEL PARAMETERS
 sim.modelfile = "ORdmm_Land.ode"
@@ -19,6 +19,7 @@ write_all_mech.numbers = 2
 write_all_mech.0.name = "Ta"
 write_all_mech.1.name = "lambda"
 
+# Currently output both point traces and average values for these:
 write_point_ep.numbers = 2
 write_point_ep.0.name = "cai"
 write_point_ep.0.x = 0.0
