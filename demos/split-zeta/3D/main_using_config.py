@@ -123,17 +123,43 @@ for bc in range(config["bcs"]["numbers"]):
     else:
         bcs_expressions[f"{bc}"] = dolfin.Constant(0)
 
+def setup_geometry(dx):
+    Lx = 20.0  # mm
+    Ly = 7.0  # mm
+    Lz = 3.0  # mm
 
-mesh = dolfin.Mesh()
-with dolfin.XDMFFile(f'{config["sim"]["mech_mesh"]}.xdmf') as infile:
-    infile.read(mesh)
-print(f'Loaded mesh: {config["sim"]["mech_mesh"]}')
+    mesh = dolfin.BoxMesh(
+        dolfin.MPI.comm_world,
+        dolfin.Point(0.0, 0.0, 0.0),
+        dolfin.Point(Lx, Ly, Lz),
+        int(np.rint((Lx / dx))),
+        int(np.rint((Ly / dx))),
+        int(np.rint((Lz / dx))),
+    )
+    return mesh
 
-
+mesh = setup_geometry(dx=3.0)
 ffun_bcs = dolfin.MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
-with dolfin.XDMFFile(f'{config["bcs"]["markerfile"]}.xdmf') as infile:
-    infile.read(ffun_bcs)
-print(f'Loaded markerfile for bcs: {config["bcs"]["markerfile"]}')
+ffun_bcs.set_all(0)
+fixed = dolfin.CompiledSubDomain("on_boundary && near(x[0], 0.0)")
+fixed.mark(ffun_bcs, 1)
+
+fixed = dolfin.CompiledSubDomain("on_boundary && near(x[1], 0.0)")
+fixed.mark(ffun_bcs, 3)
+
+fixed = dolfin.CompiledSubDomain("on_boundary && near(x[2], 0.0)")
+fixed.mark(ffun_bcs, 5)
+
+# mesh = dolfin.Mesh()
+# with dolfin.XDMFFile(f'{config["sim"]["mech_mesh"]}.xdmf') as infile:
+#     infile.read(mesh)
+# print(f'Loaded mesh: {config["sim"]["mech_mesh"]}')
+
+
+# ffun_bcs = dolfin.MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
+# with dolfin.XDMFFile(f'{config["bcs"]["markerfile"]}.xdmf') as infile:
+#     infile.read(ffun_bcs)
+# print(f'Loaded markerfile for bcs: {config["bcs"]["markerfile"]}')
 
 
 tol = 5e-4
@@ -256,14 +282,14 @@ if not Path("ep_model.py").exists():
     )
 
     Path("ep_model.py").write_text(code_ep)
-    # Currently 3D mech needs to be written manually 
+    # Currently 3D mech needs to be written manually
 
 import ep_model as _ep_model
 
 ep_model = _ep_model.__dict__
 
 
-# Validate ep variables to output 
+# Validate ep variables to output
 for i in list(set(out_ep_coord_names) | set(out_ep_var_names)):
     try:
         var = ep_model["state_index"](i)
@@ -428,8 +454,8 @@ active_model.t = 0.0
 
 mech_variables = {
     "Ta": active_model.Ta_current,
-    "Zetas": active_model.Zetas,
-    "Zetaw": active_model.Zetaw,
+    "Zetas": active_model._Zetas,
+    "Zetaw": active_model._Zetaw,
     "lambda": active_model.lmbda,
     "XS":active_model.XS,
     "XW":active_model.XW,
@@ -509,7 +535,7 @@ for i, ti in enumerate(t):
     ep_solver.step((ti, ti + config["sim"]["dt"]))
 
     # Assign values to ep function
-    for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):    
+    for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
         #out_ep_funcs[out_ep_var].vector()[:] = ode._values[out_indices[out_ep_var]]
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[ep_model["state_index"](out_ep_var)]
 
@@ -553,8 +579,8 @@ for i, ti in enumerate(t):
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
     active_model.update_prev()
 
-    missing_ep.u_mechanics_int[0].interpolate(active_model.Zetas)
-    missing_ep.u_mechanics_int[1].interpolate(active_model.Zetaw)
+    missing_ep.u_mechanics_int[0].interpolate(active_model._Zetas)
+    missing_ep.u_mechanics_int[1].interpolate(active_model._Zetaw)
 
     missing_ep.interpolate_mechanics_to_ep()
     missing_ep.ep_function_to_values()
