@@ -259,21 +259,21 @@ if not Path("ep_model.py").exists():
     )
 
     Path("ep_model.py").write_text(code_ep)
-    # Currently 3D mech needs to be written manually 
+    # Currently 3D mech needs to be written manually
 
 import ep_model as _ep_model
 
 ep_model = _ep_model.__dict__
 
-    
-# Validate ep variables to output 
+
+# Validate ep variables to output
 for i in list(set(out_ep_coord_names) | set(out_ep_var_names)):
     try:
         var = ep_model["state_index"](i)
     except KeyError:
         print(f"{i} is not an ep state. Check config file")
         raise
-                
+
 # Forwared generalized rush larsen scheme for the electrophysiology model
 fgr_ep = jit(nopython=True)(ep_model["forward_generalized_rush_larsen"])
 # Monitor function for the electrophysiology model
@@ -344,7 +344,7 @@ missing_ep.values_ep.T[:] = ep_missing_values_
 
 missing_mech.values_ep.T[:] = mechanics_missing_values_
 missing_mech.values_mechanics.T[:] = mechanics_missing_values_
-missing_mech.mechanics_values_to_function() # Assign initial values to mech functions 
+missing_mech.mechanics_values_to_function() # Assign initial values to mech functions
 
 
 
@@ -450,7 +450,7 @@ active_model = LandModel(
 active_model.t = 0.0
 
 
-mech_variables = { 
+mech_variables = {
     "Ta": active_model.Ta_current,
     "Zetas": active_model.Zetas,
     "Zetaw": active_model.Zetaw,
@@ -538,7 +538,7 @@ for i, ti in enumerate(t):
     # Assign values to ep function
     for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[ep_model["state_index"](out_ep_var)]
-    
+
     # Store values to plot time series for given coord
     for var_nr in range(config["write_point_ep"]["numbers"]):
         # Trace variable in coordinate
@@ -565,8 +565,8 @@ for i, ti in enumerate(t):
 
     if i % config["sim"]["N"] != 0:
         continue
-    
-    
+
+
     # Extract missing values for the mechanics step from the ep model (ep function space)
     missing_ep_values = mv_ep(
         ti + config["sim"]["dt"], ode._values, ode.parameters, missing_ep.values_ep,
@@ -580,26 +580,26 @@ for i, ti in enumerate(t):
     missing_mech.interpolate_ep_to_mechanics()
     missing_mech.mechanics_function_to_values()
     inds.append(i)
-    
+
     print("Solve mechanics")
     active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
     active_model.update_prev()
-    
-    
+
+
     missing_ep.u_mechanics_int[0].interpolate(active_model.J_TRPN)
 
     missing_ep.interpolate_mechanics_to_ep()
     missing_ep.ep_function_to_values()
-    
+
     print(
         active_model.lmbda.vector().get_local().min(),
         active_model.lmbda.vector().get_local().max(),
     )
 
     U, p = problem.state.split(deepcopy=True)
-    
-        
+
+
     # Use previous cai in mech to be consistent with zeta split
     for i in range(len(mechanics_missing_values_)):
         prev_missing_mech.u_mechanics[i].vector().set_local(missing_mech.values_mechanics[i])

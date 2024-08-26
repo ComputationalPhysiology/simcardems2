@@ -256,14 +256,14 @@ if not Path("ep_model.py").exists():
     )
 
     Path("ep_model.py").write_text(code_ep)
-    # Currently 3D mech needs to be written manually 
+    # Currently 3D mech needs to be written manually
 
 import ep_model as _ep_model
 
 ep_model = _ep_model.__dict__
 
 
-# Validate ep variables to output 
+# Validate ep variables to output
 for i in list(set(out_ep_coord_names) | set(out_ep_var_names)):
     try:
         var = ep_model["state_index"](i)
@@ -509,7 +509,7 @@ for i, ti in enumerate(t):
     ep_solver.step((ti, ti + config["sim"]["dt"]))
 
     # Assign values to ep function
-    for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):    
+    for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
         #out_ep_funcs[out_ep_var].vector()[:] = ode._values[out_indices[out_ep_var]]
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[ep_model["state_index"](out_ep_var)]
 

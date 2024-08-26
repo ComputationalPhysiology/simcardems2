@@ -33,7 +33,7 @@ def update_lambda_and_dlambda(t, prev_lmbda, dt):
     p[lmbda_index] = lmbda_ti
     p_mechanics[lmbda_index_mechanics] = lmbda_ti
     p_ep[lmbda_index_ep] = lmbda_ti
-    
+
     dLambda = (lmbda_ti - prev_lmbda)/dt
     p[dLambda_index] = dLambda
     p_mechanics[dLambda_index_mechanics] = dLambda
@@ -54,7 +54,7 @@ ep_file = Path("ORdmm_Land_ep.py")
 # Generate model code from .ode file
 rebuild = False
 if not ep_file.is_file() or rebuild:
-        
+
     # Generate code for full model. The full model output is plotted together with the splitting
     code = gotranx.cli.gotran2py.get_code(
         ode,
@@ -225,14 +225,14 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     y = model["init_state_values"]()
     p = model["init_parameter_values"]()
 
-    
+
     # The missing variables in mechanics is catrpn. No missing variables in ep
     mechanics_missing_values[:] = mv_ep(0, y_ep, p_ep)
-    
+
     # We will store the previous missing values to check for convergence
     prev_mechanics_missing_values = np.zeros_like(mechanics_missing_values)
     prev_mechanics_missing_values[:] = mechanics_missing_values
-    
+
 
     inds = []
     count = 1
@@ -245,7 +245,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         monitor = mon(ti, y, p)
         J_TRPN_full[i] = monitor[J_TRPN_index]
         Ta_full[i] = monitor[Ta_index]
-        CaTrpn_full[i] = y[CaTrpn_index]       
+        CaTrpn_full[i] = y[CaTrpn_index]
         XS_full[i] = y[XS_index]
         Zetas_full[i] = y[Zetas_index]
         dLambda_full[i] = p[dLambda_index]
@@ -258,7 +258,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         V_ep[i] = y_ep[V_index_ep]
         Ca_ep[i] = y_ep[Ca_index_ep]
         CaTrpn_ep[i] = y_ep[CaTrpn_index_ep]
-        
+
         monitor_ep = mon_ep(ti, y_ep, p_ep) # no missing ep values for cai-catrpn split
         J_TRPN_ep[i] = monitor_ep[J_TRPN_index_ep]
 
@@ -308,8 +308,8 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti+dt, prev_lmbda, dt)
         # Update missing values for the mechanics model
         prev_mechanics_missing_values[:] = mechanics_missing_values
-        
-        
+
+
 
     # Plot the results
     perc = 100 * len(inds) / len(t)
@@ -325,7 +325,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         ax[5, 0].plot(t, XU_full, color="k", linestyle="--", label="Full")
         ax[6, 0].plot(t, XS_full, color="k", linestyle="--", label="Full")
         ax[7, 0].plot(t, Zetas_full, color="k", linestyle="--", label="Full")
-        
+
 
         lines.append(l)
         labels.append("Full")
@@ -333,7 +333,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     (l,) = ax[0, 0].plot(t, V_ep, color=col, linestyle=ls, label=f"tol={tol}")
     lines.append(l)
     labels.append(f"tol={tol}, perc={perc:.2f}%")
-        
+
     ax[0, 1].plot(
         t,
         Ca_ep,
@@ -341,11 +341,11 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,
         # label=f"tol={tol}",
     )
-        
+
     ax[0, 0].set_ylabel("V (mV)")
     ax[0, 1].set_ylabel("Ca (mM)")
 
-    
+
     ax[1, 0].plot(
         t[inds],
         lmbda_mechanics[inds],
@@ -353,8 +353,8 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,  # label=f"tol={tol}"
         #marker='.'
     )
-    
-    
+
+
     ax[1, 1].plot(
         t[inds],
         dLambda_mechanics[inds],
@@ -377,8 +377,8 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,  # label=f"tol={tol}"
     )
     ax[2, 0].set_ylabel("J TRPN ")
-    
-    
+
+
     ax[2, 1].plot(
         t[inds],
         J_TRPN_full[inds] - J_TRPN_ep[inds],
@@ -387,7 +387,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,
     )
     ax[2, 1].set_ylabel("J TRPN \n error")
-    
+
     ax[3, 0].plot(
         t[inds],
         CaTrpn_ep[inds],
@@ -395,7 +395,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,  # label=f"tol={tol}"
         #marker='.'
     )
-    
+
     ax[3, 1].plot(
         t[inds],
         CaTrpn_full[inds] - CaTrpn_ep[inds],
@@ -406,10 +406,10 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     )
     ax[3, 0].set_ylabel("CaTrpn ep")
     ax[3, 1].set_ylabel("CaTrpn \n error")
-    
-    
-    
-    
+
+
+
+
     ax[4, 0].plot(
         t[inds],
         TmB_mechanics[inds],
@@ -417,8 +417,8 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,  # label=f"tol={tol}"
     )
     ax[4, 0].set_ylabel("TmB mech")
-    
-    
+
+
     ax[4, 1].plot(
         t[inds],
         np.around(TmB_full[inds] - TmB_mechanics[inds], 16), # round to float precision
@@ -427,10 +427,10 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,
     )
     ax[4, 1].set_ylabel("TmB \n mech error")
-    
-    
-    
-    
+
+
+
+
     ax[5, 0].plot(
         t[inds],
         XU_mechanics[inds],
@@ -446,11 +446,11 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     )
     ax[5, 0].set_ylabel("XU mech")
     ax[5, 1].set_ylabel("XU \n mech error")
-    
-    
-    
-    
-    
+
+
+
+
+
     ax[6, 0].plot(
         t[inds],
         XS_mechanics[inds],
@@ -467,15 +467,15 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
 
     ax[6, 0].set_ylabel("XS mech")
     ax[6, 1].set_ylabel("XS \n mech error")
-    
-    
+
+
     ax[7, 0].plot(
         t[inds],
         Zetas_mechanics[inds],
         color=col,
         linestyle=ls,  # label=f"tol={tol}"
     )
-    
+
     ax[7, 1].plot(
         t[inds],
         Zetas_full[inds] - Zetas_mechanics[inds],
@@ -485,7 +485,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     )
     ax[7, 0].set_ylabel("Zetas mech")
     ax[7, 1].set_ylabel("Zetas \n mech error")
-        
+
     ax[8, 0].plot(
         t[inds],
         Ta_mechanics[inds],
@@ -493,7 +493,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,  # label=f"tol={tol}"
     )
     ax[8, 0].set_ylabel("Ta (kPa)")
-    
+
     ax[8, 1].plot(
         t[inds],
         Ta_full[inds] - Ta_mechanics[inds],
@@ -502,9 +502,9 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         linestyle=ls,
     )
     ax[8, 1].set_ylabel("Ta \n error (kPa)")
-    
-    
-     
+
+
+
     ax[8, 0].set_xlabel("Time (ms)")
     ax[8, 1].set_xlabel("Time (ms)")
 

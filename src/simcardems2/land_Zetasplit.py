@@ -23,16 +23,16 @@ def _Zeta(Zeta, A, c, dLambda, dt, scheme: Scheme):
             print("dLambda:", dLambda)
             return Zeta
         else:
-            return (np.where(
-                    (np.abs(-c) > 1e-08),
-                    Zeta * np.exp(-c * dt) + (A * dLambda / (c * dt)) * (1.0 - np.exp(-c * dt)), 
-                    Zeta + A*dLambda - Zeta*c*dt
-                    )
-                )
+            return np.where(
+                (np.abs(-c) > 1e-08),
+                Zeta * np.exp(-c * dt) + (A * dLambda / (c * dt)) * (1.0 - np.exp(-c * dt)),
+                Zeta + A * dLambda - Zeta * c * dt,
+            )
     elif scheme == Scheme.bd:
         return Zeta + A * dLambda / (1.0 + c * dt)
     else:
         return Zeta * (1.0 - c * dt) + A * dLambda
+
 
 _parameters = {
     "Beta0": 2.3,
@@ -159,11 +159,11 @@ class LandModel(pulse.ActiveModel):
     def update_Zetas(self):
         logger.debug("update Zetas")
         self._Zetas.vector()[:] = _Zeta(
-            #self.Zetas_prev.vector(),
+            # self.Zetas_prev.vector(),
             self.Zetas_prev.vector().get_local(),
             self.As,
             self.cs,
-            #self.dLambda.vector(),
+            # self.dLambda.vector(),
             self.dLambda.vector().get_local(),
             self.dt,
             self._scheme,
@@ -176,11 +176,11 @@ class LandModel(pulse.ActiveModel):
     def update_Zetaw(self):
         logger.debug("update Zetaw")
         self._Zetaw.vector()[:] = _Zeta(
-            #self.Zetaw_prev.vector(),
+            # self.Zetaw_prev.vector(),
             self.Zetaw_prev.vector().get_local(),
             self.Aw,
             self.cw,
-            #self.dLambda.vector(),
+            # self.dLambda.vector(),
             self.dLambda.vector().get_local(),
             self.dt,
             self._scheme,
@@ -235,8 +235,6 @@ class LandModel(pulse.ActiveModel):
             * (Tref * scale_popu_Tref / (rs * scale_popu_rs))
             * (self.XS * (self.Zetas + 1.0) + self.XW * self.Zetaw)
         )
-
-
 
     def Wactive(self, F, **kwargs):
         """Active stress energy"""
