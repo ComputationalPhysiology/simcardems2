@@ -16,23 +16,16 @@ class Scheme(str, Enum):
     analytic = "analytic"
 
 
-def _Zeta(Zeta, A, c, dLambda, dt, scheme: Scheme):
-    if scheme == Scheme.analytic:
-        if dt == 0:
-            print("NB!: dt equal to zero in forward step! This is expected for initialisation step")
-            print("dLambda:", dLambda)
-            return Zeta
-        else:
-            return (np.where(
-                    (np.abs(-c) > 1e-08),
-                    Zeta * np.exp(-c * dt) + (A * dLambda / (c * dt)) * (1.0 - np.exp(-c * dt)), 
-                    Zeta + A*dLambda - Zeta*c*dt
-                    )
-                )
-    elif scheme == Scheme.bd:
-        return Zeta + A * dLambda / (1.0 + c * dt)
+def _Zeta(Zeta_prev, A, c, dLambda, dt, scheme: Scheme):
+    # if scheme == Scheme.analytic:
+    dZetas_dt = A * dLambda - Zeta_prev * c
+    dZetas_dt_linearized = -c
+    if abs(c) > 1e-8:
+        return Zeta_prev + dZetas_dt * (np.exp(-c * dt) - 1.0) / dZetas_dt_linearized
     else:
-        return Zeta * (1.0 - c * dt) + A * dLambda
+        # Forward euler
+        return Zeta_prev + dZetas_dt * dt
+
 
 _parameters = {
     "Beta0": 2.3,
@@ -68,7 +61,7 @@ class LandModel(pulse.ActiveModel):
         super().__init__(f0=f0, s0=s0, n0=n0)
 
         self._eta = eta
-        self.function_space = dolfin.FunctionSpace(mesh, "CG", 1)
+        self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
 
         self.XS = XS
         self.XW = XW
@@ -100,14 +93,13 @@ class LandModel(pulse.ActiveModel):
         self._dLambda_tol = dLambda_tol
         self._t_prev = 0.0
 
-    @property
-    def dLambda(self):
+    # @property
+    def dLambda(self, lmbda):
         logger.debug("Evaluate dLambda")
-        self._dLambda.vector()[:] = self.lmbda.vector() - self.lmbda_prev.vector()
-        self._dLambda.vector()[
-            np.where(np.abs(self._dLambda.vector().get_local()) < self._dLambda_tol)[0]
-        ] = 0.0
-        return self._dLambda
+        if self.dt == 0:
+            return self._dLambda
+        else:
+            return (lmbda - self.lmbda_prev)/self.dt
 
     @property
     def Aw(self):
@@ -156,64 +148,70 @@ class LandModel(pulse.ActiveModel):
             / (rs * scale_popu_rs)
         )
 
-    def update_Zetas(self):
+    def update_Zetas(self, lmbda):
         logger.debug("update Zetas")
-        self._Zetas.vector()[:] = _Zeta(
-            #self.Zetas_prev.vector(),
-            self.Zetas_prev.vector().get_local(),
+        self._projector(
+            self._Zetas,
+            _Zeta(
+                self.Zetas_prev,
+                self.As,
+                self.cs,
+                self.dLambda(lmbda),
+                self.dt,
+                self._scheme,
+            ),
+        )
+
+    def Zetas(self, lmbda):
+        # return self._Zetas
+        return _Zeta(
+            self.Zetas_prev,
             self.As,
             self.cs,
-            #self.dLambda.vector(),
-            self.dLambda.vector().get_local(),
+            self.dLambda(lmbda),
             self.dt,
             self._scheme,
         )
 
-    @property
-    def Zetas(self):
-        return self._Zetas
-
-    def update_Zetaw(self):
+    def update_Zetaw(self, lmbda):
         logger.debug("update Zetaw")
-        self._Zetaw.vector()[:] = _Zeta(
-            #self.Zetaw_prev.vector(),
-            self.Zetaw_prev.vector().get_local(),
+        self._projector(
+            self._Zetaw,
+            _Zeta(
+                self.Zetaw_prev,
+                self.Aw,
+                self.cw,
+                self.dLambda(lmbda),
+                self.dt,
+                self._scheme,
+            ),
+        )
+
+    def Zetaw(self, lmbda):
+        return _Zeta(
+            self.Zetaw_prev,
             self.Aw,
             self.cw,
-            #self.dLambda.vector(),
-            self.dLambda.vector().get_local(),
+            self.dLambda(lmbda),
             self.dt,
             self._scheme,
         )
 
-    @property
-    def Zetaw(self):
-        return self._Zetaw
-
-    # def register_time_stepper(self, time_stepper: TimeStepper) -> None:
-    #     self.time_stepper = time_stepper
-    #     self._t_prev = time_stepper.t
 
     @property
     def dt(self) -> float:
         return self.t - self._t_prev
 
-    # @property
-    # def t(self) -> float:
-    #     if not hasattr(self, "time_stepper"):
-    #         return 0.0
-    #     return self.time_stepper.t
 
     def update_prev(self):
         logger.debug("update previous")
-        self.Zetas_prev.vector()[:] = self.Zetas.vector()
-        self.Zetaw_prev.vector()[:] = self.Zetaw.vector()
+        self.Zetas_prev.vector()[:] = self._Zetas.vector()
+        self.Zetaw_prev.vector()[:] = self._Zetaw.vector()
         self.lmbda_prev.vector()[:] = self.lmbda.vector()
-        self._projector.project(self.Ta_current, self.Ta)
+        self._projector.project(self.Ta_current, self.Ta(self.lmbda))
         self._t_prev = self.t
 
-    @property
-    def Ta(self):
+    def Ta(self, lmbda):
         logger.debug("Evaluate Ta")
         Tref = self._parameters["Tref"]
         rs = self._parameters["rs"]
@@ -223,20 +221,18 @@ class LandModel(pulse.ActiveModel):
 
         _min = ufl.min_value
         _max = ufl.max_value
-        if isinstance(self.lmbda, (int, float)):
+        if isinstance(lmbda, (int, float)):
             _min = min
             _max = max
-        lmbda = _min(1.2, self.lmbda)
+        lmbda = _min(1.2, lmbda)
         h_lambda_prima = 1.0 + Beta0 * (lmbda + _min(lmbda, 0.87) - 1.87)
         h_lambda = _max(0, h_lambda_prima)
 
         return (
             h_lambda
             * (Tref * scale_popu_Tref / (rs * scale_popu_rs))
-            * (self.XS * (self.Zetas + 1.0) + self.XW * self.Zetaw)
+            * (self.XS * (self.Zetas(lmbda) + 1.0) + self.XW * self.Zetaw(lmbda))
         )
-
-
 
     def Wactive(self, F, **kwargs):
         """Active stress energy"""
@@ -244,11 +240,13 @@ class LandModel(pulse.ActiveModel):
         C = F.T * F
         C = F.T * F
         f = F * self.f0
-        self._projector.project(self.lmbda, dolfin.sqrt(f**2))
-        self.update_Zetas()
-        self.update_Zetaw()
+        lmbda = dolfin.sqrt(f**2)
+        self._projector.project(self.lmbda, lmbda)
+        self.update_Zetas(lmbda=lmbda)
+        self.update_Zetaw(lmbda=lmbda)
+        
         return pulse.material.active_model.Wactive_transversally(
-            Ta=self.Ta,
+            Ta=self.Ta(lmbda),
             C=C,
             f0=self.f0,
             eta=self.eta,

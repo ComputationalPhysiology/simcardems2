@@ -285,7 +285,9 @@ y_ep_ = ep_model["init_state_values"]()
 p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 
 ep_missing_values_ = np.zeros(len(ep_model["missing"]))
-ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+
+#ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+ep_mesh = mesh  # TEST
 
 time = dolfin.Constant(0.0)
 I_s = define_stimulus(
@@ -361,7 +363,8 @@ ode = beat.odesolver.DolfinODESolver(
     num_missing_variables=len(ep_model["missing"]),
 )
 
-ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
+#ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
+ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1) # Test
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
 
@@ -390,7 +393,6 @@ def create_boundary_conditions(
         return bcs
 
     neumann_bc = []
-    # TODO: add support for using neumann
     if bcs_neumann is not None:
         for bc in bcs_neumann:
             neumann_bc.append(
@@ -428,8 +430,8 @@ active_model.t = 0.0
 
 mech_variables = {
     "Ta": active_model.Ta_current,
-    "Zetas": active_model.Zetas,
-    "Zetaw": active_model.Zetaw,
+    "Zetas": active_model._Zetas,
+    "Zetaw": active_model._Zetaw,
     "lambda": active_model.lmbda,
     "XS":active_model.XS,
     "XW":active_model.XW,
@@ -498,10 +500,10 @@ out_mech_volume_average_timeseries = {}
 for out_mech_var in out_mech_coord_names:
     out_mech_volume_average_timeseries[out_mech_var] = np.zeros(len(t))
 
+#ep_solver.step((0, 0)) # TEST
 
 inds = []  # Array with time-steps for which we solve mechanics
 j = 0
-theta = 0.5
 timer = dolfin.Timer("solve_loop")
 for i, ti in enumerate(t):
     print(f"Solving time {ti:.2f} ms")
@@ -524,19 +526,9 @@ for i, ti in enumerate(t):
             i
         ] = compute_function_average_over_mesh(out_ep_funcs[out_ep_var], ep_mesh)
 
-    for var_nr in range(config["write_point_mech"]["numbers"]):
-        out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
-        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
-            mech_coords[var_nr]
-        )
-
-        # Compute volume averages
-        out_mech_volume_average_timeseries[out_mech_var][
-            i
-        ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
-
     if i % config["sim"]["N"] != 0:
         continue
+
     missing_ep_values = mv_ep(
         ti + config["sim"]["dt"], ode._values, ode.parameters, missing_ep.values_ep
     )
@@ -553,8 +545,8 @@ for i, ti in enumerate(t):
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
     active_model.update_prev()
 
-    missing_ep.u_mechanics_int[0].interpolate(active_model.Zetas)
-    missing_ep.u_mechanics_int[1].interpolate(active_model.Zetaw)
+    missing_ep.u_mechanics_int[0].interpolate(active_model._Zetas)
+    missing_ep.u_mechanics_int[1].interpolate(active_model._Zetaw)
 
     missing_ep.interpolate_mechanics_to_ep()
     missing_ep.ep_function_to_values()
@@ -566,6 +558,18 @@ for i, ti in enumerate(t):
     )
 
     U, p = problem.state.split(deepcopy=True)
+    
+    for var_nr in range(config["write_point_mech"]["numbers"]):
+        out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
+        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
+            mech_coords[var_nr]
+        )
+
+        # Compute volume averages
+        out_mech_volume_average_timeseries[out_mech_var][
+            i
+        ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
+
 
     with dolfin.XDMFFile(disp_file.as_posix()) as file:
         file.write_checkpoint(U, "disp", j, dolfin.XDMFFile.Encoding.HDF5, True)
