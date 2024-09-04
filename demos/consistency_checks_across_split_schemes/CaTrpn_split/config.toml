@@ -1,0 +1,119 @@
+# Configuration file for running a simulation
+
+# SIMULATION PARAMETERS
+sim.mech_mesh = "mesh_mech_3.0" # mechanics mesh filepath without extension
+sim.outdir = "100ms_N10_cai_catrpn_split_consistent_with_zeta_runcheck" # Output directory
+sim.sim_dur = 100 # Duration of simulation. Integer
+sim.dt = 0.05 # Timestep for ep solve
+sim.N = 10 # Solve mechanics step every nth ep solve
+
+# MODEL PARAMETERS
+sim.modelfile = "ORdmm_Land.ode"
+
+# OUTPUT PARAMETERS
+write_all_ep.numbers = 2
+write_all_ep.0.name = "cai"
+write_all_ep.1.name = "v"
+
+write_all_mech.numbers = 2
+write_all_mech.0.name = "Ta"
+write_all_mech.1.name = "lambda"
+
+# Currently also outputting volume averages for these:
+write_point_ep.numbers = 3
+write_point_ep.0.name = "cai"
+write_point_ep.0.x = 0.0
+write_point_ep.0.y = 0
+write_point_ep.0.z = 0
+write_point_ep.1.name =	"v"
+write_point_ep.1.x = 0
+write_point_ep.1.y = 0
+write_point_ep.1.z = 0
+write_point_ep.2.name = "CaTrpn"
+write_point_ep.2.x = 0
+write_point_ep.2.y = 0
+write_point_ep.2.z = 0
+
+write_point_mech.numbers = 5
+write_point_mech.0.name = "Ta"
+write_point_mech.0.x = 0
+write_point_mech.0.y = 0
+write_point_mech.0.z = 0
+write_point_mech.1.name = "Zetas"
+write_point_mech.1.x = 0
+write_point_mech.1.y = 0
+write_point_mech.1.z = 0
+write_point_mech.2.name = "XS"
+write_point_mech.2.x = 0
+write_point_mech.2.y = 0
+write_point_mech.2.z = 0
+write_point_mech.3.name = "TmB"
+write_point_mech.3.x = 0
+write_point_mech.3.y = 0
+write_point_mech.3.z = 0
+write_point_mech.4.name = "lambda"
+write_point_mech.4.x = 0
+write_point_mech.4.y = 0
+write_point_mech.4.z = 0
+
+
+
+# Tissue conductivity values. Currently only a single region, from p.4339 of Niederer benchmark
+ep.sigma_il = 0.17  # mS / mm
+ep.sigma_it = 0.019  # mS / mm
+ep.sigma_el = 0.62  # mS / mm
+ep.sigma_et = 0.24  # mS / mm
+
+# Material parameters
+# TODO: make material parameters more generic
+mech.a=2.28
+mech.a_f=1.686
+mech.b=9.726
+mech.b_f=15.779
+mech.a_s=0.0
+mech.b_s=0.0
+mech.a_fs=0.0
+mech.b_fs=0.0
+
+# STIMULUS PARAMETERS
+stim.start = 0.0
+stim.amplitude = 50000.0 # mu A/cm^3
+stim.duration = 2 # ms  
+stim.xmin = 0.0
+stim.xmax = 1.5
+stim.ymin = 0.0
+stim.ymax = 1.5
+stim.zmin = 0.0
+stim.zmax = 1.5
+
+# BOUNDARY CONDITIONS
+bcs.numbers = 3
+bcs.markerfile = "mesh_mech_3dx_20Lx_7Ly_3Lz_surface_ffun"
+
+# Mesh markers used for assigning bcs
+bcs.0.marker = 1
+bcs.0.type = "Dirichlet"
+bcs.0.V = "u_x"
+bcs.0.expression = 0
+bcs.0.param_numbers = 0
+
+bcs.1.marker = 3 # if same marker for ux,uy,uz, (e.g. marker = 1), then fixes the entire plane (plane with marker == 1)
+bcs.1.type = "Dirichlet"
+bcs.1.V = "u_y"
+bcs.1.expression = 0
+bcs.1.param_numbers = 0
+
+bcs.2.marker = 5
+bcs.2.type = "Dirichlet"
+bcs.2.V = "u_z"
+bcs.2.expression = 0
+bcs.2.param_numbers = 0
+
+#bcs.3.marker = 2
+#bcs.3.type = "Neumann" 
+#bcs.3.expression = 'a*t' # Value can be a function of t
+#bcs.3.param_numbers = 1
+#bcs.3.param.0.name = 'a'
+#bcs.3.param.0.value = -0.2
+#bcs.3.degree = 1
+
