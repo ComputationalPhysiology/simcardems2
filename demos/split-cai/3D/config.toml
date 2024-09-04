@@ -2,8 +2,8 @@
 
 # SIMULATION PARAMETERS
 sim.mech_mesh = "mesh_mech_3.0" # mechanics mesh filepath without extension
-sim.outdir = "1ms_N1_cai_split" # Output directory
-sim.sim_dur = 1 # Duration of simulation. Integer
+sim.outdir = "100ms_N1_cai_split_runcheck" # Output directory
+sim.sim_dur = 100 # Duration of simulation. Integer
 sim.dt = 0.05 # Timestep for ep solve
 sim.N = 1 # Solve mechanics step every nth ep solve
 
@@ -30,7 +30,7 @@ write_point_ep.1.x = 0
 write_point_ep.1.y = 0
 write_point_ep.1.z = 0
 
-write_point_mech.numbers = 5
+write_point_mech.numbers = 6
 write_point_mech.0.name = "Ta"
 write_point_mech.0.x = 0
 write_point_mech.0.y = 0
@@ -51,6 +51,10 @@ write_point_mech.4.name = "CaTrpn"
 write_point_mech.4.x = 0
 write_point_mech.4.y = 0
 write_point_mech.4.z = 0
+write_point_mech.5.name = "lambda"
+write_point_mech.5.x = 0
+write_point_mech.5.y = 0
+write_point_mech.5.z = 0
 
 
 # Tissue conductivity values. Currently only a single region, from p.4339 of Niederer benchmark
@@ -82,7 +86,7 @@ stim.zmin = 0.0
 stim.zmax = 1.5
 
 # BOUNDARY CONDITIONS
-bcs.numbers = 4
+bcs.numbers = 3 #4
 bcs.markerfile = "mesh_mech_3dx_20Lx_7Ly_3Lz_surface_ffun"
 
 # Mesh markers used for assigning bcs
@@ -104,11 +108,11 @@ bcs.2.V = "u_z"
 bcs.2.expression = 0
 bcs.2.param_numbers = 0
 
-bcs.3.marker = 2
-bcs.3.type = "Neumann" # NB: Neumann not yet supported. TODO: implement in main
-bcs.3.expression = 'a*t' # Value can be a function of t
-bcs.3.param_numbers = 1
-bcs.3.param.0.name = 'a'
-bcs.3.param.0.value = -0.2
-bcs.3.degree = 1
+#bcs.3.marker = 2
+#bcs.3.type = "Neumann" 
+#bcs.3.expression = 'a*t' # Value can be a function of t
+#bcs.3.param_numbers = 1
+#bcs.3.param.0.name = 'a'
+#bcs.3.param.0.value = -0.2
+#bcs.3.degree = 1
 
