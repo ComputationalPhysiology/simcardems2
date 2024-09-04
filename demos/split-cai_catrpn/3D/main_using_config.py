@@ -19,7 +19,7 @@ import copy
 from simcardems2 import utils
 from simcardems2 import mechanicssolver
 from simcardems2 import interpolation
-from simcardems2.land_CaTrpn import LandModel
+from simcardems2.land_CaTrpnsplit import LandModel
 from simcardems2.validate_input_types import validate_input_types
 
 
@@ -286,8 +286,10 @@ lmbda_index_ep = ep_model["parameter_index"]("lmbda")
 # Get initial values from the EP model
 y_ep_ = ep_model["init_state_values"]()
 p_ep_ = ep_model["init_parameter_values"](amp=0.0)
-ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
 
+
+#ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+ep_mesh = mesh  
 
 time = dolfin.Constant(0.0)
 I_s = define_stimulus(
@@ -371,7 +373,8 @@ ode = beat.odesolver.DolfinODESolver(
     num_missing_variables=0,
 )
 
-ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
+#ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
+ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1) # Test
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
 
@@ -400,7 +403,6 @@ def create_boundary_conditions(
         return bcs
 
     neumann_bc = []
-    # TODO: add support for using neumann
     if bcs_neumann is not None:
         for bc in bcs_neumann:
             neumann_bc.append(
@@ -430,8 +432,7 @@ active_model = LandModel(
     #CaTrpn=missing_mech.u_mechanics[0],  
     CaTrpn=prev_missing_mech.u_mechanics[0],  # Use prev Catrpn in mech to be consistent with zeta split
     mesh=mesh,
-    #TmB=1, # Initial value of TmB
-    eta=0, #Fraction of transverse active tesion for active stress formulation.
+    eta=0, #Fraction of transverse active tension for active stress formulation.
         #0 = active only along fiber, 1 = equal forces in all directions
         #(default=0.0).
     dLambda_tol=1e-12,
@@ -441,12 +442,12 @@ active_model.t = 0.0
 
 mech_variables = {
     "Ta": active_model.Ta_current,
-    "Zetas": active_model.Zetas,
-    "Zetaw": active_model.Zetaw,
+    "Zetas": active_model._Zetas,
+    "Zetaw": active_model._Zetaw,
     "lambda": active_model.lmbda,
-    "XS":active_model.XS,
-    "XW":active_model.XW,
-    "TmB": active_model.TmB,
+    "XS":active_model._XS,
+    "XW":active_model._XW,
+    "TmB": active_model._TmB,
 }
 
 # Validate mechanics variables to output
@@ -475,6 +476,7 @@ bcs = create_boundary_conditions(
 )
 
 problem = mechanicssolver.MechanicsProblem(geometry, material, bcs)
+print("problem set up")
 problem.solve(0.0, 0.0)
 
 disp_file = Path(outdir / "disp.xdmf")
@@ -515,8 +517,8 @@ for out_mech_var in out_mech_coord_names:
 
 inds = []  # Array with time-steps for which we solve mechanics
 j = 0
-theta = 0.5
 timer = dolfin.Timer("solve_loop")
+
 for i, ti in enumerate(t):
     print(f"Solving time {ti:.2f} ms")
     t_bcs.assign(ti) # Use ti+ dt here instead?
@@ -538,22 +540,9 @@ for i, ti in enumerate(t):
             i
         ] = compute_function_average_over_mesh(out_ep_funcs[out_ep_var], ep_mesh)
 
-    for var_nr in range(config["write_point_mech"]["numbers"]):
-        # Trace variable in coordinate
-        out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
-        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
-            mech_coords[var_nr]
-        )
-
-        # Compute volume averages
-        out_mech_volume_average_timeseries[out_mech_var][
-            i
-        ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
-
     if i % config["sim"]["N"] != 0:
         continue
-    
-    
+
     # Extract missing values for the mechanics step from the ep model (ep function space)
     missing_ep_values = mv_ep(
         ti + config["sim"]["dt"], ode._values, ode.parameters
@@ -582,6 +571,20 @@ for i, ti in enumerate(t):
 
     U, p = problem.state.split(deepcopy=True)
     
+
+    for var_nr in range(config["write_point_mech"]["numbers"]):
+        # Trace variable in coordinate
+        out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
+        
+        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
+            mech_coords[var_nr]
+        )
+
+        # Compute volume averages
+        out_mech_volume_average_timeseries[out_mech_var][
+            i
+        ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
+
         
     # Use previous Catrpn in mech to be consistent with zeta split
     for i in range(len(mechanics_missing_values_)):
