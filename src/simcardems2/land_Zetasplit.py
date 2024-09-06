@@ -61,7 +61,8 @@ class LandModel(pulse.ActiveModel):
         super().__init__(f0=f0, s0=s0, n0=n0)
 
         self._eta = eta
-        self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
+        #self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
+        self.function_space = dolfin.FunctionSpace(mesh, "DG", 1)
 
         self.XS = XS
         self.XW = XW
