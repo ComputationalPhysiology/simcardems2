@@ -20,6 +20,7 @@ from simcardems2 import utils
 from simcardems2 import mechanicssolver
 from simcardems2 import interpolation
 from land_caisplit_consistent_with_zetasplit import LandModel
+
 from simcardems2.validate_input_types import validate_input_types
 
 
@@ -289,6 +290,7 @@ p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 #ep_missing_values_ = np.zeros(len(ep_model["missing"])) # Init value for J_TRPN
 ep_missing_values_ = np.array([0.00010730972184715098])# Init value for J_TRPN = dCaTrpn_dt * trpnmax (to compare with zetasplit)
 
+
 #ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
 ep_mesh = mesh
 
@@ -305,7 +307,9 @@ I_s = define_stimulus(
 )
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
-ep_ode_space = dolfin.FunctionSpace(ep_mesh, "CG", 1)
+#ep_ode_space = dolfin.FunctionSpace(ep_mesh, "CG", 1) # original
+#ep_ode_space = dolfin.FunctionSpace(mesh, "DG", 0)     # TEST!
+ep_ode_space = dolfin.FunctionSpace(mesh, "DG", 1)     # TEST!
 v_ode = dolfin.Function(ep_ode_space)
 num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)
@@ -320,7 +324,11 @@ mechanics_missing_values_ = np.array([0.0001]) # Init value for cai
 
 
 # Set the activation
-activation_space = dolfin.FunctionSpace(mesh, "CG", 1)
+#activation_space = dolfin.FunctionSpace(mesh, "CG", 1) # original
+#activation_space = dolfin.FunctionSpace(mesh, "DG", 0)     # TEST!
+activation_space = dolfin.FunctionSpace(mesh, "DG", 1)     # TEST!
+
+
 activation = dolfin.Function(activation_space)
 num_points_mech = activation.vector().local_size()
 
@@ -516,6 +524,8 @@ inds = []  # Array with time-steps for which we solve mechanics
 j = 0
 timer = dolfin.Timer("solve_loop")
 for i, ti in enumerate(t):
+    print(f"Solving time {ti:.2f} ms")
+    t_bcs.assign(ti) # Use ti+ dt here instead?
     if i % config["sim"]["N"] == 0:
         print("Solve mechanics")
         active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
@@ -539,8 +549,6 @@ for i, ti in enumerate(t):
             ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
     
 
-    print(f"Solving time {ti:.2f} ms")
-    t_bcs.assign(ti) # Use ti+ dt here instead?
     ep_solver.step((ti, ti + config["sim"]["dt"]))
 
     # Assign values to ep function
