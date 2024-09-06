@@ -288,8 +288,8 @@ y_ep_ = ep_model["init_state_values"]()
 p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 
 
-#ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
-ep_mesh = mesh  
+ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+#ep_mesh = mesh  
 
 time = dolfin.Constant(0.0)
 I_s = define_stimulus(
@@ -304,7 +304,7 @@ I_s = define_stimulus(
 )
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
-ep_ode_space = dolfin.FunctionSpace(ep_mesh, "CG", 1)
+ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1)
 v_ode = dolfin.Function(ep_ode_space)
 num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)
@@ -320,7 +320,7 @@ mechanics_missing_values_ = np.array([0.0001])
 
 
 # Set the activation
-activation_space = dolfin.FunctionSpace(mesh, "CG", 1)
+activation_space = dolfin.FunctionSpace(mesh, "DG", 1)
 activation = dolfin.Function(activation_space)
 num_points_mech = activation.vector().local_size()
 

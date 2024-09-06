@@ -80,16 +80,16 @@ _parameters = {
     "Beta0": 2.3,
     "Tot_A": 25.0,
     "Tref": 120,
-    "kuw": 0.182, # 0.026 in land 2017 ?
-    "kws": 0.012, # 0.004 in land 2017?
+    "kuw": 0.182, 
+    "kws": 0.012, 
     "phi": 2.23,
     "rs": 0.25,
     "rw": 0.5,
     "gammas": 0.0085,  # New parameters CaTrpn split
     "gammaw": 0.615,  # New parameters CaTrpn split
     "Trpn50": 0.35,   # New parameters CaTrpn split
-    "ntm": 2.4, # New parameters CaTrpn split. # TODO: check. ntm = 2.2 or 5 in Land et al. 2017 vs 2.4 in .ode files
-    "ku": 0.04, # New parameters CaTrpn split. # TODO: check. ku = 1 in Land et al. 2017
+    "ntm": 2.4, # New parameters CaTrpn split. 
+    "ku": 0.04, # New parameters CaTrpn split. 
 }
 
 
@@ -117,7 +117,7 @@ class LandModel(pulse.ActiveModel):
         super().__init__(f0=f0, s0=s0, n0=n0)
 
         self._eta = eta
-        self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
+        self.function_space = dolfin.FunctionSpace(mesh, "DG", 1)
 
         """ For Catrpn split"""
         self.CaTrpn = CaTrpn
