@@ -20,7 +20,6 @@ from simcardems2 import utils
 from simcardems2 import mechanicssolver
 from simcardems2 import interpolation
 from land_caisplit_consistent_with_zetasplit import LandModel
-
 from simcardems2.validate_input_types import validate_input_types
 
 
@@ -307,9 +306,7 @@ I_s = define_stimulus(
 )
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
-#ep_ode_space = dolfin.FunctionSpace(ep_mesh, "CG", 1) # original
-#ep_ode_space = dolfin.FunctionSpace(mesh, "DG", 0)     # TEST!
-ep_ode_space = dolfin.FunctionSpace(mesh, "DG", 1)     # TEST!
+ep_ode_space = dolfin.FunctionSpace(mesh, "DG", 1)     
 v_ode = dolfin.Function(ep_ode_space)
 num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)
@@ -324,11 +321,7 @@ mechanics_missing_values_ = np.array([0.0001]) # Init value for cai
 
 
 # Set the activation
-#activation_space = dolfin.FunctionSpace(mesh, "CG", 1) # original
-#activation_space = dolfin.FunctionSpace(mesh, "DG", 0)     # TEST!
-activation_space = dolfin.FunctionSpace(mesh, "DG", 1)     # TEST!
-
-
+activation_space = dolfin.FunctionSpace(mesh, "DG", 1)    
 activation = dolfin.Function(activation_space)
 num_points_mech = activation.vector().local_size()
 
