@@ -30,34 +30,34 @@ def _Zeta(Zeta_prev, A, c, dLambda, dt, scheme: Scheme):
 def _XS(XS_prev, XW, gammasu, ksu, kws, dt):
     dXS_dt_linearized = -gammasu - ksu
     dXS_dt = -XS_prev * gammasu - XS_prev * ksu + XW * kws    
-    return XS_prev + ufl.conditional(
-        ufl.gt(abs(dXS_dt_linearized), 1e-8),
-        dXS_dt * (dolfin.exp(dXS_dt_linearized*dt) - 1) / dXS_dt_linearized, 
+    return XS_prev + np.where(
+        (np.abs(dXS_dt_linearized)> 1e-8),
+        dXS_dt * (np.exp(dXS_dt_linearized*dt) - 1) / dXS_dt_linearized, 
         dXS_dt * dt
         )
-    
+
 def _XW(XW_prev, XU, gammawu, kws, kuw, kwu, dt):
     dXW_dt_linearized = -gammawu - kws - kwu
     dXW_dt = -XW_prev * gammawu - XW_prev * kws + XU * kuw - XW_prev * kwu
-    return XW_prev + ufl.conditional( 
-        ufl.gt(abs(dXW_dt_linearized), 1e-8),
-        dXW_dt * (dolfin.exp(dXW_dt_linearized*dt) - 1) / dXW_dt_linearized,                
+    return XW_prev + np.where( 
+        (np.abs(dXW_dt_linearized)> 1e-8),
+        dXW_dt * (np.exp(dXW_dt_linearized*dt) - 1) / dXW_dt_linearized,                
         dXW_dt * dt
         )
     
 def _TmB(TmB_prev, CaTrpn, XU, ntm, kb, ku, dt):
     dTmB_dt_linearized = -(CaTrpn ** (ntm / 2)) * ku
     dTmB_dt = -TmB_prev * CaTrpn ** (ntm / 2) * ku + XU * ( 
-        kb * ufl.conditional( 
-            ufl.lt(CaTrpn ** (-1 / 2 * ntm),100),
+        kb * np.where( 
+            (CaTrpn ** (-1 / 2 * ntm)<100),
             CaTrpn ** (-1 / 2 * ntm),
             100
             )
         )
     
-    return TmB_prev + ufl.conditional( 
-        ufl.gt(abs(dTmB_dt_linearized), 1e-8),
-        dTmB_dt * (dolfin.exp(dTmB_dt_linearized * dt) - 1) / dTmB_dt_linearized,          
+    return TmB_prev + np.where( 
+        (np.abs(dTmB_dt_linearized)> 1e-8),
+        dTmB_dt * (np.exp(dTmB_dt_linearized * dt) - 1) / dTmB_dt_linearized,          
         dTmB_dt * dt
         )
     
@@ -65,31 +65,31 @@ def _XU(XW, XS, TmB):
     return -XW -XS + 1 - TmB
 
 def _gammawu(Zetaw, gammaw):
-    return gammaw * abs(Zetaw)
+    return gammaw * np.abs(Zetaw)
     
 
 def _gammasu(Zetas, gammas):
-    return (gammas*ufl.conditional(
-            ufl.gt(Zetas, 0), Zetas, ufl.conditional(
-                ufl.lt(Zetas, -1), -Zetas - 1, 0
-                )
-            )
-        )
+    return gammas * np.where(
+        (Zetas > 0), 
+        Zetas, 
+        np.where((Zetas < -1), 
+        -Zetas - 1, 0)
+        )  
 
 _parameters = {
     "Beta0": 2.3,
     "Tot_A": 25.0,
     "Tref": 120,
-    "kuw": 0.182, # 0.026 in land 2017 ?
-    "kws": 0.012, # 0.004 in land 2017?
+    "kuw": 0.182, 
+    "kws": 0.012, 
     "phi": 2.23,
     "rs": 0.25,
     "rw": 0.5,
     "gammas": 0.0085,  # New parameters CaTrpn split
     "gammaw": 0.615,  # New parameters CaTrpn split
     "Trpn50": 0.35,   # New parameters CaTrpn split
-    "ntm": 2.4, # New parameters CaTrpn split. # TODO: check. ntm = 2.2 or 5 in Land et al. 2017 vs 2.4 in .ode files
-    "ku": 0.04, # New parameters CaTrpn split. # TODO: check. ku = 1 in Land et al. 2017
+    "ntm": 2.4, # New parameters CaTrpn split.
+    "ku": 0.04, # New parameters CaTrpn split. 
 }
 
 
@@ -117,7 +117,7 @@ class LandModel(pulse.ActiveModel):
         super().__init__(f0=f0, s0=s0, n0=n0)
 
         self._eta = eta
-        self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
+        self.function_space = dolfin.FunctionSpace(mesh, "DG", 1) 
 
         """ For Catrpn split"""
         self.CaTrpn = CaTrpn
@@ -199,59 +199,85 @@ class LandModel(pulse.ActiveModel):
         return ((Trpn50**ntm * ku) / (-rw * (1 - rs) + 1 - rs))
     
     @property
-    def XW(self):
-        return _XW(
-            XW_prev=self.XW_prev,
-            XU=self.XU,
-            gammawu=self.gammawu,
-            kws=self._parameters["kws"],
-            kuw=self._parameters["kuw"],
-            kwu=self.kwu,
-            dt=self.dt,
-            )
-        
-    @property
     def XS(self):
-        return _XS(
-            XS_prev=self.XS_prev,
-            XW=self.XW_prev, 
-            gammasu=self.gammasu, 
-            ksu=self.ksu,
-            kws=self._parameters["kws"],
-            dt=self.dt,
-            )
+        return self._XS
+    
+    @property
+    def XW(self):
+        return self._XW
     
     @property
     def TmB(self):
-        return _TmB(
-            TmB_prev=self.TmB_prev,
-            CaTrpn=self.CaTrpn,
-            XU=self.XU,
-            ntm=self._parameters["ntm"],
-            kb=self.kb,
-            ku=self._parameters["ku"],
-            dt=self.dt,
-            )
+        return self._TmB
     
     @property
-    def XU(self): 
-        return _XU(
-            XW=self.XW_prev,
-            XS=self.XS_prev,
-            TmB=self.TmB_prev,
-            )
+    def XU(self):
+        return self._XU
+    
     @property
     def gammawu(self):
-        return _gammawu(
-            Zetaw=self.Zetaw_prev,
-            gammaw=self._parameters["gammaw"],
-            )
+        return self._gammawu
     
     @property
     def gammasu(self):
-        return _gammasu(
-            Zetas=self.Zetas_prev,
-            gammas=self._parameters["gammas"],
+        return self._gammasu
+    
+    def update_TmB(self):
+        logger.debug("update TmB")
+        self._TmB.vector()[:] = _TmB(
+            self.TmB_prev.vector().get_local(),
+            self.CaTrpn.vector().get_local(), 
+            self.XU.vector().get_local(),
+            self._parameters["ntm"],
+            self.kb,
+            self._parameters["ku"],
+            self.dt
+            )
+    
+    def update_XS(self):
+        logger.debug("update XS") 
+        self._XS.vector()[:] = _XS(
+            self.XS_prev.vector().get_local(),
+            self.XW_prev.vector().get_local(),
+            self.gammasu.vector().get_local(),
+            self.ksu,
+            self._parameters["kws"],
+            self.dt
+            )
+                
+    def update_XW(self):
+        logger.debug("update XW")
+        self._XW.vector()[:] = _XW(
+            self.XW_prev.vector().get_local(),
+            self.XU.vector().get_local(),
+            self.gammawu.vector().get_local(),
+            self._parameters["kws"],
+            self._parameters["kuw"],
+            self.kwu,
+            self.dt
+            )
+        
+    # Calculate monitors
+    def calculate_XU(self):
+        logger.debug("update XU")
+        self._XU.vector()[:] = _XU(
+            self.XW_prev.vector().get_local(),
+            self.XS_prev.vector().get_local(),
+            self.TmB_prev.vector().get_local(),
+            )
+        
+    def calculate_gammasu(self):
+        logger.debug("update gammasu")
+        self._gammasu.vector()[:] = _gammasu(
+            self.Zetas_prev.vector().get_local(),
+            self._parameters["gammas"],
+            )
+        
+    def calculate_gammawu(self):
+        logger.debug("update gammawu")
+        self._gammawu.vector()[:] = _gammawu(
+            self.Zetaw_prev.vector().get_local(),
+            self._parameters["gammaw"],
             )
 
     def dLambda(self, lmbda):
@@ -308,49 +334,6 @@ class LandModel(pulse.ActiveModel):
             / (rs * scale_popu_rs)
         )
             
-    def update_TmB(self):
-        logger.debug("update TmB")
-        self._projector(
-            self._TmB,
-            _TmB(
-                TmB_prev=self.TmB_prev,
-                CaTrpn=self.CaTrpn,
-                XU=self.XU,
-                ntm=self._parameters["ntm"],
-                kb=self.kb,
-                ku=self._parameters["ku"],
-                dt=self.dt,
-                )
-            )
-        
-    def update_XS(self):
-        logger.debug("update XS") 
-        self._projector(
-            self._XS,
-            _XS(
-                XS_prev=self.XS_prev,
-                XW=self.XW_prev,
-                gammasu=self.gammasu,
-                ksu=self.ksu,
-                kws=self._parameters["kws"],
-                dt=self.dt,
-                )
-            )
-        
-    def update_XW(self):
-        logger.debug("update XW")
-        self._projector(
-            self._XW,
-            _XW(
-                XW_prev=self.XW_prev,
-                XU=self.XU,
-                gammawu=self.gammawu,
-                kws=self._parameters["kws"],
-                kuw=self._parameters["kuw"],
-                kwu=self.kwu,
-                dt=self.dt,
-                )
-            )
 
     def update_Zetas(self, lmbda):
         logger.debug("update Zetas")
@@ -367,7 +350,6 @@ class LandModel(pulse.ActiveModel):
         )
 
     def Zetas(self, lmbda):
-        # return self._Zetas
         return _Zeta(
             self.Zetas_prev,
             self.As,
@@ -438,7 +420,6 @@ class LandModel(pulse.ActiveModel):
         h_lambda_prima = 1.0 + Beta0 * (lmbda + _min(lmbda, 0.87) - 1.87)
         h_lambda = _max(0, h_lambda_prima)
                 
-        # Use XS and XW projections to be consistent with zetasplit
         return (
             h_lambda
             * (Tref * scale_popu_Tref / (rs * scale_popu_rs))
@@ -460,6 +441,9 @@ class LandModel(pulse.ActiveModel):
         self.update_Zetaw(lmbda=lmbda)
         
         """ For Catrpn split"""
+        self.calculate_XU()
+        self.calculate_gammasu()
+        self.calculate_gammawu()
         self.update_XS()
         self.update_XW()
         self.update_TmB()   
