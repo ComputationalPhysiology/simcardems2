@@ -304,7 +304,7 @@ I_s = define_stimulus(
 )
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
-ep_ode_space = dolfin.FunctionSpace(mesh, "DG", 1) 
+ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1) 
 v_ode = dolfin.Function(ep_ode_space)
 num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)

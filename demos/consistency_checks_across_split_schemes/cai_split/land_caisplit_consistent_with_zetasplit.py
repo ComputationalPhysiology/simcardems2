@@ -491,6 +491,7 @@ class LandModel(pulse.ActiveModel):
         self.XS_prev.vector()[:] = self.XS.vector()
         self.XW_prev.vector()[:] = self._XW.vector()
         self.TmB_prev.vector()[:] = self._TmB.vector()
+        """ For cai split"""
         self.CaTrpn_prev.vector()[:] = self._CaTrpn.vector()
         """ """
         
@@ -544,7 +545,6 @@ class LandModel(pulse.ActiveModel):
         self.update_TmB()   
         
         """ New for cai split"""
-        # Use projections to be consistent with zetasplit
         self.calculate_cat50()
         self.calculate_J_TRPN() # Missing in ep
         self.update_CaTrpn()

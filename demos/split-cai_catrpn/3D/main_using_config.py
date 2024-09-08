@@ -288,8 +288,8 @@ y_ep_ = ep_model["init_state_values"]()
 p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 
 
-ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
-#ep_mesh = mesh  
+#ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+ep_mesh = mesh  
 
 time = dolfin.Constant(0.0)
 I_s = define_stimulus(

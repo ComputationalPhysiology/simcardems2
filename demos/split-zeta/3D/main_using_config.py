@@ -286,8 +286,9 @@ p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 
 ep_missing_values_ = np.zeros(len(ep_model["missing"]))
 
-#ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
-ep_mesh = mesh  # For testing consistency across splits! Otherwise refine
+ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+#ep_mesh = mesh  # For testing consistency across splits! Otherwise refine
+#ep_mesh = dolfin.adapt(mesh)
 
 time = dolfin.Constant(0.0)
 I_s = define_stimulus(
@@ -302,7 +303,7 @@ I_s = define_stimulus(
 )
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
-ep_ode_space = dolfin.FunctionSpace(mesh, "DG", 1)  
+ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1)  
 v_ode = dolfin.Function(ep_ode_space)
 num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)
@@ -364,7 +365,7 @@ ode = beat.odesolver.DolfinODESolver(
 )
 
 #ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
-ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1) # Test
+ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1) 
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
 
@@ -500,7 +501,6 @@ out_mech_volume_average_timeseries = {}
 for out_mech_var in out_mech_coord_names:
     out_mech_volume_average_timeseries[out_mech_var] = np.zeros(len(t))
 
-#ep_solver.step((0, 0)) # TEST
 
 inds = []  # Array with time-steps for which we solve mechanics
 j = 0
