@@ -3,15 +3,16 @@ import gotranx
 import numpy as np
 import time
 
-
+# Simulation parameters
 with_twitch = False
-from_init_state = True
+dt = 0.1 
+bcs = 1000 
+beats = 200
 
-# Set ep-time step
-dt = 0.1 #0.1 #0.05
-bcs = 10#00 #1000
-beats = 1 #200#00 
-init_beats = 0 #200
+# Parameters for starting from an already saved state
+from_init_state = True
+init_beats = 0 #200 # Number of beats already run, if starting from init state
+
 
 if from_init_state:
     init_state_file = "state_1beats_twitchTrue_dt0.1.txt"
@@ -48,10 +49,7 @@ def update_lambda_and_dlambda(t, prev_lmbda, dt):
     return p, prev_lmbda
 
 # Load the model
-#ode = gotranx.load_ode("ORdmm_Land.ode")
-#ode = gotranx.load_ode("ToRORd_dynCl_endo.ode")
 ode = gotranx.load_ode("ToRORd_dynCl_endo_zetasplit.ode")
-#file = Path("ToRORd_dynCl_endo.py")
 file = Path("ToRORd_dynCl_endo_zetasplit.py")
 
 # Generate model code from .ode file
@@ -65,11 +63,8 @@ if not file.is_file() or rebuild:
     )
     Path("ToRORd_dynCl_endo_zetasplit.py").write_text(code)
 
-#import ToRORd_dynCl_endo
+
 import ToRORd_dynCl_endo_zetasplit
-#import ORdmm_Land
-#model = ORdmm_Land.__dict__
-#model = ToRORd_dynCl_endo.__dict__
 model = ToRORd_dynCl_endo_zetasplit.__dict__
 
 t = np.arange(0, bcs, dt)
