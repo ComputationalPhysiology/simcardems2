@@ -61,8 +61,10 @@ class LandModel(pulse.ActiveModel):
         super().__init__(f0=f0, s0=s0, n0=n0)
 
         self._eta = eta
-        #self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
+        # self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
         self.function_space = dolfin.FunctionSpace(mesh, "DG", 1)
+        self.u_space = dolfin.VectorFunctionSpace(mesh, "CG", 2)
+        self.u_prev = dolfin.Function(self.u_space)
 
         self.XS = XS
         self.XW = XW
@@ -95,12 +97,18 @@ class LandModel(pulse.ActiveModel):
         self._t_prev = 0.0
 
     # @property
+    # def lmbda_prev(self):
+    #     F = dolfin.grad(self.u_prev) + ufl.Identity(3)
+    #     f = F * self.f0
+    #     return dolfin.sqrt(f**2)
+
+    # @property
     def dLambda(self, lmbda):
         logger.debug("Evaluate dLambda")
         if self.dt == 0:
             return self._dLambda
         else:
-            return (lmbda - self.lmbda_prev)/self.dt
+            return (lmbda - self.lmbda_prev) / self.dt
 
     @property
     def Aw(self):
@@ -198,18 +206,16 @@ class LandModel(pulse.ActiveModel):
             self._scheme,
         )
 
-
     @property
     def dt(self) -> float:
         return self.t - self._t_prev
-
 
     def update_prev(self):
         logger.debug("update previous")
         self.Zetas_prev.vector()[:] = self._Zetas.vector()
         self.Zetaw_prev.vector()[:] = self._Zetaw.vector()
         self.lmbda_prev.vector()[:] = self.lmbda.vector()
-        self._projector.project(self.Ta_current, self.Ta(self.lmbda))
+        # self.u_prev_prev.vector()[:] = self.u_prev.vector()
         self._t_prev = self.t
 
     def Ta(self, lmbda):
@@ -239,13 +245,14 @@ class LandModel(pulse.ActiveModel):
         """Active stress energy"""
         logger.debug("Compute active stress energy")
         C = F.T * F
-        C = F.T * F
         f = F * self.f0
         lmbda = dolfin.sqrt(f**2)
         self._projector.project(self.lmbda, lmbda)
         self.update_Zetas(lmbda=lmbda)
         self.update_Zetaw(lmbda=lmbda)
-        
+        self._projector.project(self.Ta_current, self.Ta(lmbda))
+        self._projector.project(self._dLambda, self.dLambda(lmbda))
+
         return pulse.material.active_model.Wactive_transversally(
             Ta=self.Ta(lmbda),
             C=C,

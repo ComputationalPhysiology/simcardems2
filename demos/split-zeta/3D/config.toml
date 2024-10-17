@@ -1,23 +1,26 @@
 # Configuration file for running a simulation
 
 # SIMULATION PARAMETERS
-sim.mech_mesh = "mesh_mech_3dx_20Lx_7Ly_3Lz" # mechanics mesh filepath without extension
+sim.mech_mesh = "mesh_mech_0.5dx_0.5Lx_1Ly_2Lz" # mechanics mesh filepath without extension
 sim.outdir = "100ms_N10_zeta_split" # Output directory
-sim.sim_dur = 100 # Duration of simulation. Integer
+sim.sim_dur = 200 # Duration of simulation. Integer
 sim.dt = 0.05 # Timestep for ep solve
 sim.N = 10 # Solve mechanics step every nth ep solve
 
 # MODEL PARAMETERS
-sim.modelfile = "ORdmm_Land.ode"
+sim.modelfile = "ToRORd_dynCl_endo_zetasplit.ode"
 
 # OUTPUT PARAMETERS
 write_all_ep.numbers = 2
 write_all_ep.0.name = "cai"
 write_all_ep.1.name = "v"
 
-write_all_mech.numbers = 2
+write_all_mech.numbers = 5
 write_all_mech.0.name = "Ta"
 write_all_mech.1.name = "lambda"
+write_all_mech.2.name = "dLambda"
+write_all_mech.3.name = "sigma_ff"
+write_all_mech.4.name = "sigma_ff_active"
 
 # Currently also outputting volume averages for these:
 write_point_ep.numbers = 4
@@ -38,7 +41,7 @@ write_point_ep.3.x = 0
 write_point_ep.3.y = 0
 write_point_ep.3.z = 0
 
-write_point_mech.numbers = 4
+write_point_mech.numbers = 8
 write_point_mech.0.name = "Ta"
 write_point_mech.0.x = 0
 write_point_mech.0.y = 0
@@ -55,6 +58,22 @@ write_point_mech.3.name = "lambda"
 write_point_mech.3.x = 0
 write_point_mech.3.y = 0
 write_point_mech.3.z = 0
+write_point_mech.4.name = "dLambda"
+write_point_mech.4.x = 0
+write_point_mech.4.y = 0
+write_point_mech.4.z = 0
+write_point_mech.5.name = "sigma_ff"
+write_point_mech.5.x = 0
+write_point_mech.5.y = 0
+write_point_mech.5.z = 0
+write_point_mech.6.name = "sigma_ff_active"
+write_point_mech.6.x = 0
+write_point_mech.6.y = 0
+write_point_mech.6.z = 0
+write_point_mech.7.name = "sigma_ff_passive"
+write_point_mech.7.x = 0
+write_point_mech.7.y = 0
+write_point_mech.7.z = 0
 
 # Tissue conductivity values. Currently only a single region, from p.4339 of Niederer benchmark
 ep.sigma_il = 0.17  # mS / mm
@@ -65,7 +84,7 @@ ep.sigma_et = 0.24  # mS / mm
 # Material parameters
 # TODO: make material parameters more generic
 mech.a=2.28
-mech.a_f=1.686
+mech.a_f=1.685
 mech.b=9.726
 mech.b_f=15.779
 mech.a_s=0.0
@@ -86,7 +105,7 @@ stim.zmax = 1.5
 
 # BOUNDARY CONDITIONS
 bcs.numbers = 3
-bcs.markerfile = "mesh_mech_3dx_20Lx_7Ly_3Lz_surface_ffun"
+bcs.markerfile = "mesh_mech_0.5dx_0.5Lx_1Ly_2Lz_surface_ffun"
 
 # Mesh markers used for assigning bcs
 bcs.0.marker = 1
