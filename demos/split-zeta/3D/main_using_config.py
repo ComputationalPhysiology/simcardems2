@@ -431,6 +431,8 @@ active_model.t = 0.0
 
 sigma_ff = dolfin.Function(activation_space)
 sigma_ff_active = dolfin.Function(activation_space)
+sigma_ss_active = dolfin.Function(activation_space)
+sigma_nn_active = dolfin.Function(activation_space)
 sigma_ff_passive = dolfin.Function(activation_space)
 
 
@@ -444,6 +446,8 @@ mech_variables = {
     "dLambda":active_model._dLambda,
     "sigma_ff": sigma_ff,
     "sigma_ff_active": sigma_ff_active,
+    "sigma_ss_active": sigma_ss_active,
+    "sigma_nn_active": sigma_nn_active,
     "sigma_ff_passive": sigma_ff_passive,
 }
 
@@ -576,8 +580,12 @@ for i, ti in enumerate(t):
     P_active = ufl.diff(psi_active, F)
     Cauchy_active = pulse.kinematics.InversePiolaTransform(P_active, F)
     f = F * f0
+    s = F * s0
+    n = F * n0
     sigma_ff.vector()[:] = dolfin.project(ufl.inner(Cauchy * f, f), activation_space).vector()
     sigma_ff_active.vector()[:] = dolfin.project(ufl.inner(Cauchy_active * f, f), activation_space).vector()
+    sigma_ss_active.vector()[:] = dolfin.project(ufl.inner(Cauchy_active * s, s), activation_space).vector()
+    sigma_nn_active.vector()[:] = dolfin.project(ufl.inner(Cauchy_active * n, n), activation_space).vector()
     sigma_ff_passive.vector()[:] = sigma_ff.vector() - sigma_ff_active.vector()
 
     for var_nr in range(config["write_point_mech"]["numbers"]):
@@ -668,24 +676,25 @@ for var_nr in range(config["write_point_ep"]["numbers"]):
 fig.tight_layout()
 fig.savefig(Path(outdir / "out_ep_coord.png"))
 
-fig, ax = plt.subplots(len(out_mech_coord_names), 1, figsize=(10, 10))
+N = len(out_mech_coord_names)
+fig, ax = plt.subplots(N // 2 + N % 2, 2, figsize=(10, 10))
 if len(out_mech_coord_names) == 1:
     ax = np.array([ax])
 for i, out_mech_var in enumerate(out_mech_coord_names):
-    ax[i].plot(t[inds], out_mech_volume_average_timeseries[out_mech_var][inds])
-    ax[i].set_title(f"{out_mech_var} volume average")
-    ax[i].set_xlabel("Time (ms)")
+    ax.flatten()[i].plot(t[inds], out_mech_volume_average_timeseries[out_mech_var][inds])
+    ax.flatten()[i].set_title(f"{out_mech_var} volume average")
+    ax.flatten()[i].set_xlabel("Time (ms)")
 fig.tight_layout()
 fig.savefig(Path(outdir / "out_mech_volume_averages.png"))
 
-fig, ax = plt.subplots(len(out_mech_coord_names), 1, figsize=(10, 10))
+fig, ax = plt.subplots(N // 2 + N % 2, 2, figsize=(10, 10))
 if len(out_mech_coord_names) == 1:
     ax = np.array([ax])
 
 for var_nr in range(config["write_point_mech"]["numbers"]):
     out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
-    ax[var_nr].plot(t[inds], out_mech_example_nodes[out_mech_var][inds])
-    ax[var_nr].set_title(f"{out_mech_var} in coord {mech_coords[var_nr]}")
-    ax[var_nr].set_xlabel("Time (ms)")
+    ax.flatten()[var_nr].plot(t[inds], out_mech_example_nodes[out_mech_var][inds])
+    ax.flatten()[var_nr].set_title(f"{out_mech_var} in coord {mech_coords[var_nr]}")
+    ax.flatten()[var_nr].set_xlabel("Time (ms)")
 fig.tight_layout()
 fig.savefig(Path(outdir / "out_mech_coord.png"))
