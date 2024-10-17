@@ -32,7 +32,7 @@ def update_lambda_and_dlambda(t, prev_lmbda, dt):
     p[lmbda_index] = lmbda_ti
     p_mechanics[lmbda_index_mechanics] = lmbda_ti
     p_ep[lmbda_index_ep] = lmbda_ti
-    
+
     dLambda = (lmbda_ti - prev_lmbda)/dt
     p[dLambda_index] = dLambda
     p_mechanics[dLambda_index_mechanics] = dLambda
@@ -53,7 +53,7 @@ ep_file = Path("ORdmm_Land_ep.py")
 # Generate model code from .ode file
 rebuild = False
 if not ep_file.is_file() or rebuild:
-        
+
     # Generate code for full model
     code = gotranx.cli.gotran2py.get_code(
         ode,
@@ -204,27 +204,27 @@ for N in Ns:
     y = model["init_state_values"]()
     p = model["init_parameter_values"]()
 
-    
+
     # The missing variables in mechanics is catrpn. No missing variables in ep
     mechanics_missing_values[:] = mv_ep(0, y_ep, p_ep)
-    
+
     # We will store the previous missing values to check for convergence
     prev_mechanics_missing_values = np.zeros_like(mechanics_missing_values)
     prev_mechanics_missing_values[:] = mechanics_missing_values
-    
+
 
     inds = []
     count = 1
     max_count = 10
     prev_lmbda = p[lmbda_index]
     p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(np.float64(0), prev_lmbda, dt)
-    
+
     timings_solveloop = []
     timings_ep_steps = []
     timings_mech_steps = []
     for i, ti in enumerate(t):
         timing_loopstart = time.perf_counter()
-        
+
         if run_full_model:
             # Forward step for the full model
             y[:] = fgr(y, ti, dt, p)
@@ -233,7 +233,7 @@ for N in Ns:
             Ca_full[i] = y[Ca_index]
             J_TRPN_full[i] = monitor[J_TRPN_index]
             Ta_full[i] = monitor[Ta_index]
-            CaTrpn_full[i] = y[CaTrpn_index]       
+            CaTrpn_full[i] = y[CaTrpn_index]
             XS_full[i] = y[XS_index]
             Zetas_full[i] = y[Zetas_index]
             dLambda_full[i] = p[dLambda_index]
@@ -249,11 +249,11 @@ for N in Ns:
         CaTrpn_ep[i] = y_ep[CaTrpn_index_ep]
         monitor_ep = mon_ep(ti, y_ep, p_ep) # no missing ep values for cai-catrpn split
         J_TRPN_ep[i] = monitor_ep[J_TRPN_index_ep]
-        
+
         timing_ep_end = time.perf_counter()
         timings_ep_steps.append(timing_ep_end-timing_ep_start)
-        
-        
+
+
         # Update missing values for the mechanics model
         mechanics_missing_values[:] = mv_ep(t, y_ep, p_ep) # no missing ep values for cai-catrpn split
 
@@ -296,7 +296,7 @@ for N in Ns:
         p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti+dt, prev_lmbda, dt)
         # Update missing values for the mechanics model
         prev_mechanics_missing_values[:] = mechanics_missing_values
-        
+
         timings_solveloop.append(time.perf_counter() - timing_loopstart)
 
     # Plot the results
@@ -304,8 +304,8 @@ for N in Ns:
     print(f"Solved on {perc}% of the time steps")
     inds = np.array(inds)
     timing_total = time.perf_counter() - timing_init
-    
-    with open(f"timings_N{N}", "w") as f:        
+
+    with open(f"timings_N{N}", "w") as f:
         f.write("Init time\n")
         f.write(f"{timing_init}\n")
         f.write("Loop total times\n")
@@ -316,7 +316,7 @@ for N in Ns:
         np.savetxt(f, timings_mech_steps)
         f.write("Total time\n")
         f.write(f"{timing_total}\n")
-        
+
 
     with open(f"V_ep_N{N}.txt", "w") as f:
         np.savetxt(f, V_ep[inds])

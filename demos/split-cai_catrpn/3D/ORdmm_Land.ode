@@ -661,4 +661,3 @@ Fd = eta * dCd
 F1 = (exp( p_b * C) - 1)
 Tp = p_a * (F1 + Fd)
 Ttot = Ta + Tp
-

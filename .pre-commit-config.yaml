@@ -28,3 +28,5 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: [types-toml==0.10.8]
+        files: ^src/|^tests/
+        args: ["--config-file", "pyproject.toml"]
