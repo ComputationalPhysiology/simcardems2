@@ -244,6 +244,8 @@ class NewtonSolver(dolfin.NewtonSolver):
         self.t0 = t0
         self.dt = dt
 
+        # self.active.u_prev.assign(self._state.split(deepcopy=True)[0])
+
         self.active._t_prev = t0
 
         self.active.t = t0 + dt

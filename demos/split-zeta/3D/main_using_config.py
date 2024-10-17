@@ -286,8 +286,9 @@ p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 
 ep_missing_values_ = np.zeros(len(ep_model["missing"]))
 
-ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
-#ep_mesh = mesh  # For testing consistency across splits! Otherwise refine
+
+# ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+ep_mesh = mesh  # For testing consistency across splits! Otherwise refine
 #ep_mesh = dolfin.adapt(mesh)
 
 time = dolfin.Constant(0.0)
@@ -428,6 +429,10 @@ active_model = LandModel(
 )
 active_model.t = 0.0
 
+sigma_ff = dolfin.Function(activation_space)
+sigma_ff_active = dolfin.Function(activation_space)
+sigma_ff_passive = dolfin.Function(activation_space)
+
 
 mech_variables = {
     "Ta": active_model.Ta_current,
@@ -436,6 +441,10 @@ mech_variables = {
     "lambda": active_model.lmbda,
     "XS":active_model.XS,
     "XW":active_model.XW,
+    "dLambda":active_model._dLambda,
+    "sigma_ff": sigma_ff,
+    "sigma_ff_active": sigma_ff_active,
+    "sigma_ff_passive": sigma_ff_passive,
 }
 
 # Validate mechanics variables to output
@@ -558,7 +567,19 @@ for i, ti in enumerate(t):
     )
 
     U, p = problem.state.split(deepcopy=True)
-    
+    F = ufl.variable(ufl.grad(U) + ufl.Identity(3))
+    psi = material.strain_energy(F) + p * (ufl.det(F) - 1)
+    psi_active = active_model.Wactive(F)
+
+    P = ufl.diff(psi, F)
+    Cauchy = pulse.kinematics.InversePiolaTransform(P, F)
+    P_active = ufl.diff(psi_active, F)
+    Cauchy_active = pulse.kinematics.InversePiolaTransform(P_active, F)
+    f = F * f0
+    sigma_ff.vector()[:] = dolfin.project(ufl.inner(Cauchy * f, f), activation_space).vector()
+    sigma_ff_active.vector()[:] = dolfin.project(ufl.inner(Cauchy_active * f, f), activation_space).vector()
+    sigma_ff_passive.vector()[:] = sigma_ff.vector() - sigma_ff_active.vector()
+
     for var_nr in range(config["write_point_mech"]["numbers"]):
         out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
         out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
