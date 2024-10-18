@@ -447,12 +447,6 @@ mech_variables = {
     "sigma_ff_passive": sigma_ff_passive,
 }
 
-# Validate mechanics variables to output
-for out_mech_var in list(set(out_mech_coord_names) | set(out_mech_var_names)):
-    assert (
-        out_mech_var in mech_variables
-    ), f"Error: '{out_mech_var}' is not a valid variable name. Check config file"
-
 material = pulse.HolzapfelOgden(
     parameters=material_parameters,
     active_model=active_model,
@@ -474,6 +468,16 @@ bcs = create_boundary_conditions(
 
 problem = mechanicssolver.MechanicsProblem(geometry, material, bcs)
 problem.solve(0.0, 0.0)
+
+mech_variables["p"] = problem.state.split()[1]
+
+
+# Validate mechanics variables to output
+for out_mech_var in list(set(out_mech_coord_names) | set(out_mech_var_names)):
+    assert (
+        out_mech_var in mech_variables
+    ), f"Error: '{out_mech_var}' is not a valid variable name. Check config file"
+
 
 disp_file = Path(outdir / "disp.xdmf")
 disp_file.unlink(missing_ok=True)
