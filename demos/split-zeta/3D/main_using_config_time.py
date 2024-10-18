@@ -259,14 +259,14 @@ if not Path("ep_model.py").exists():
     )
 
     Path("ep_model.py").write_text(code_ep)
-    # Currently 3D mech needs to be written manually 
+    # Currently 3D mech needs to be written manually
 
 import ep_model as _ep_model
 
 ep_model = _ep_model.__dict__
 
 
-# Validate ep variables to output 
+# Validate ep variables to output
 for i in list(set(out_ep_coord_names) | set(out_ep_var_names)):
     try:
         var = ep_model["state_index"](i)
@@ -289,7 +289,7 @@ p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 
 ep_missing_values_ = np.zeros(len(ep_model["missing"]))
 
-ep_mesh = mesh 
+ep_mesh = mesh
 #ep_mesh = dolfin.adapt(mesh)
 #ep_mesh = dolfin.adapt(dolfin.adapt(mesh))
 #ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
@@ -310,7 +310,7 @@ I_s = define_stimulus(
 )
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
-ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1)  
+ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1)
 v_ode = dolfin.Function(ep_ode_space)
 num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)
@@ -321,7 +321,7 @@ y_ep.T[:] = y_ep_
 mechanics_missing_values_ = np.zeros(2)
 
 # Set the activation
-activation_space = dolfin.FunctionSpace(mesh, "DG", 1)  
+activation_space = dolfin.FunctionSpace(mesh, "DG", 1)
 activation = dolfin.Function(activation_space)
 num_points_mech = activation.vector().local_size()
 
@@ -372,7 +372,7 @@ ode = beat.odesolver.DolfinODESolver(
 )
 
 #ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
-ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1) 
+ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1)
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
 
@@ -521,14 +521,14 @@ for i, ti in enumerate(t):
     timing_single_loop = dolfin.Timer("single_loop")
     print(f"Solving time {ti:.2f} ms")
     t_bcs.assign(ti)
-    
+
     timing_ep = dolfin.Timer("ep time")
     ep_solver.step((ti, ti + config["sim"]["dt"]))
     timing_ep.stop()
     timings_ep_steps.append(timing_ep.elapsed()[0])
 
     # Assign values to ep function
-    for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):    
+    for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
         #out_ep_funcs[out_ep_var].vector()[:] = ode._values[out_indices[out_ep_var]]
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[ep_model["state_index"](out_ep_var)]
 
@@ -580,10 +580,10 @@ for i, ti in enumerate(t):
     p_ep[lmbda_index_ep, :] = lmbda.vector().get_local() # p_ep are the ep parameters
     timing_var_transfer.stop()
     timings_var_transfer.append(timing_var_transfer.elapsed()[0])
-    
+
     if write_disp:
         U, p = problem.state.split(deepcopy=True)
-    
+
     for var_nr in range(config["write_point_mech"]["numbers"]):
         out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
         out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
@@ -620,7 +620,7 @@ for i, ti in enumerate(t):
     j += 1
     timing_single_loop.stop()
     timings_solveloop.append(timing_single_loop.elapsed()[0])
-    
+
 total_timer.stop()
 
 timings = dolfin.timings(
@@ -636,7 +636,7 @@ with open(Path(outdir / "solve_timings.txt"), "w") as f:
     f.write("Mech steps times\n")
     np.savetxt(f, timings_mech_steps)
     f.write("No of mech iterations\n")
-    np.savetxt(f, no_of_newton_iterations, fmt="%s") 
+    np.savetxt(f, no_of_newton_iterations, fmt="%s")
     f.write("mv and lambda transfer time\n")
     np.savetxt(f, timings_var_transfer)
     f.write("Total time\n")
@@ -676,7 +676,7 @@ if plot_results:
         ax[i].set_xlabel("Time (ms)")
     fig.tight_layout()
     fig.savefig(Path(outdir / "out_ep_volume_averages.png"))
-    
+
     fig, ax = plt.subplots(len(out_ep_coord_names), 1, figsize=(10, 10))
     if len(out_ep_coord_names) == 1:
         ax = np.array([ax])
@@ -687,7 +687,7 @@ if plot_results:
         ax[var_nr].set_xlabel("Time (ms)")
     fig.tight_layout()
     fig.savefig(Path(outdir / "out_ep_coord.png"))
-    
+
     fig, ax = plt.subplots(len(out_mech_coord_names), 1, figsize=(10, 10))
     if len(out_mech_coord_names) == 1:
         ax = np.array([ax])
@@ -697,11 +697,11 @@ if plot_results:
         ax[i].set_xlabel("Time (ms)")
     fig.tight_layout()
     fig.savefig(Path(outdir / "out_mech_volume_averages.png"))
-    
+
     fig, ax = plt.subplots(len(out_mech_coord_names), 1, figsize=(10, 10))
     if len(out_mech_coord_names) == 1:
         ax = np.array([ax])
-    
+
     for var_nr in range(config["write_point_mech"]["numbers"]):
         out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
         ax[var_nr].plot(t[inds], out_mech_example_nodes[out_mech_var][inds])

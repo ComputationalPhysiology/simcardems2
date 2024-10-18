@@ -26,82 +26,83 @@ def _Zeta(Zeta_prev, A, c, dLambda, dt, scheme: Scheme):
         # Forward euler
         return Zeta_prev + dZetas_dt * dt
 
-""" For CaTrpn split"""
+
+# For CaTrpn split
+
+
 def _XS(XS_prev, XW, gammasu, ksu, kws, dt):
     dXS_dt_linearized = -gammasu - ksu
-    dXS_dt = -XS_prev * gammasu - XS_prev * ksu + XW * kws    
+    dXS_dt = -XS_prev * gammasu - XS_prev * ksu + XW * kws
     return XS_prev + ufl.conditional(
         ufl.gt(abs(dXS_dt_linearized), 1e-8),
-        dXS_dt * (dolfin.exp(dXS_dt_linearized*dt) - 1) / dXS_dt_linearized, 
-        dXS_dt * dt
-        )
-    
+        dXS_dt * (dolfin.exp(dXS_dt_linearized * dt) - 1) / dXS_dt_linearized,
+        dXS_dt * dt,
+    )
+
+
 def _XW(XW_prev, XU, gammawu, kws, kuw, kwu, dt):
     dXW_dt_linearized = -gammawu - kws - kwu
     dXW_dt = -XW_prev * gammawu - XW_prev * kws + XU * kuw - XW_prev * kwu
-    return XW_prev + ufl.conditional( 
+    return XW_prev + ufl.conditional(
         ufl.gt(abs(dXW_dt_linearized), 1e-8),
-        dXW_dt * (dolfin.exp(dXW_dt_linearized*dt) - 1) / dXW_dt_linearized,                
-        dXW_dt * dt
-        )
-    
+        dXW_dt * (dolfin.exp(dXW_dt_linearized * dt) - 1) / dXW_dt_linearized,
+        dXW_dt * dt,
+    )
+
+
 def _TmB(TmB_prev, CaTrpn, XU, ntm, kb, ku, dt):
     dTmB_dt_linearized = -(CaTrpn ** (ntm / 2)) * ku
-    dTmB_dt = -TmB_prev * CaTrpn ** (ntm / 2) * ku + XU * ( 
-        kb * ufl.conditional( 
-            ufl.lt(CaTrpn ** (-1 / 2 * ntm),100),
-            CaTrpn ** (-1 / 2 * ntm),
-            100
-            )
-        )
-    
-    return TmB_prev + ufl.conditional( 
+    dTmB_dt = -TmB_prev * CaTrpn ** (ntm / 2) * ku + XU * (
+        kb * ufl.conditional(ufl.lt(CaTrpn ** (-1 / 2 * ntm), 100), CaTrpn ** (-1 / 2 * ntm), 100)
+    )
+
+    return TmB_prev + ufl.conditional(
         ufl.gt(abs(dTmB_dt_linearized), 1e-8),
-        dTmB_dt * (dolfin.exp(dTmB_dt_linearized * dt) - 1) / dTmB_dt_linearized,          
-        dTmB_dt * dt
-        )
-    
+        dTmB_dt * (dolfin.exp(dTmB_dt_linearized * dt) - 1) / dTmB_dt_linearized,
+        dTmB_dt * dt,
+    )
+
+
 def _XU(XW, XS, TmB):
-    return -XW -XS + 1 - TmB
+    return -XW - XS + 1 - TmB
+
 
 def _gammawu(Zetaw, gammaw):
     return gammaw * abs(Zetaw)
-    
+
 
 def _gammasu(Zetas, gammas):
-    return (gammas*ufl.conditional(
-            ufl.gt(Zetas, 0), Zetas, ufl.conditional(
-                ufl.lt(Zetas, -1), -Zetas - 1, 0
-                )
-            )
-        )
+    return gammas * ufl.conditional(
+        ufl.gt(Zetas, 0), Zetas, ufl.conditional(ufl.lt(Zetas, -1), -Zetas - 1, 0)
+    )
+
 
 _parameters = {
     "Beta0": 2.3,
     "Tot_A": 25.0,
     "Tref": 120,
-    "kuw": 0.182, 
-    "kws": 0.012, 
+    "kuw": 0.182,
+    "kws": 0.012,
     "phi": 2.23,
     "rs": 0.25,
     "rw": 0.5,
     "gammas": 0.0085,  # New parameters CaTrpn split
     "gammaw": 0.615,  # New parameters CaTrpn split
-    "Trpn50": 0.35,   # New parameters CaTrpn split
-    "ntm": 2.4, # New parameters CaTrpn split. 
-    "ku": 0.04, # New parameters CaTrpn split. 
+    "Trpn50": 0.35,  # New parameters CaTrpn split
+    "ntm": 2.4,  # New parameters CaTrpn split.
+    "ku": 0.04,  # New parameters CaTrpn split.
 }
 
 
 class LandModel(pulse.ActiveModel):
     def __init__(
-        self,        
+        self,
         f0,
         s0,
         n0,
         CaTrpn,  # New variables CaTrpn split (missing)
         mesh,
-        TmB=None, # New variables CaTrpn split 
+        TmB=None,  # New variables CaTrpn split
         XS=None,
         XW=None,
         parameters=None,
@@ -121,7 +122,7 @@ class LandModel(pulse.ActiveModel):
 
         """ For Catrpn split"""
         self.CaTrpn = CaTrpn
-        
+
         self._XS = dolfin.Function(self.function_space)
         self.XS_prev = dolfin.Function(self.function_space)
         if XS is not None:
@@ -131,20 +132,20 @@ class LandModel(pulse.ActiveModel):
         self.XW_prev = dolfin.Function(self.function_space)
         if XW is not None:
             self.XW_prev.assign(XW)
-        
+
         self._XU = dolfin.Function(self.function_space)
         self._gammasu = dolfin.Function(self.function_space)
         self._gammawu = dolfin.Function(self.function_space)
-        
+
         self._TmB = dolfin.Function(self.function_space)
         self.TmB_prev = dolfin.Function(self.function_space)
         if TmB is not None:
             self.TmB_prev.assign(TmB)
-        else: # Set initial TmB value
+        else:  # Set initial TmB value
             self._TmB.interpolate(dolfin.Constant(1))
             self.TmB_prev.interpolate(dolfin.Constant(1))
         """ """
-        
+
         if parameters is None:
             parameters = _parameters
         self._parameters = parameters
@@ -173,22 +174,22 @@ class LandModel(pulse.ActiveModel):
         self._dLambda_tol = dLambda_tol
         self._t_prev = 0.0
 
+    """ For CaTrpn split"""
 
-    """ For CaTrpn split"""   
     @property
     def ksu(self):
         kws = self._parameters["kws"]
         rw = self._parameters["rw"]
         rs = self._parameters["rs"]
-        return ((kws * rw) * (-1 + 1 / rs))
-    
+        return (kws * rw) * (-1 + 1 / rs)
+
     @property
     def kwu(self):
         kuw = self._parameters["kuw"]
         rw = self._parameters["rw"]
         kws = self._parameters["kws"]
-        return (kuw * (-1 + 1 / rw) - kws)
-    
+        return kuw * (-1 + 1 / rw) - kws
+
     @property
     def kb(self):
         Trpn50 = self._parameters["Trpn50"]
@@ -196,8 +197,8 @@ class LandModel(pulse.ActiveModel):
         ku = self._parameters["ku"]
         rs = self._parameters["rs"]
         rw = self._parameters["rw"]
-        return ((Trpn50**ntm * ku) / (-rw * (1 - rs) + 1 - rs))
-    
+        return (Trpn50**ntm * ku) / (-rw * (1 - rs) + 1 - rs)
+
     @property
     def XW(self):
         return _XW(
@@ -208,19 +209,19 @@ class LandModel(pulse.ActiveModel):
             kuw=self._parameters["kuw"],
             kwu=self.kwu,
             dt=self.dt,
-            )
-        
+        )
+
     @property
     def XS(self):
         return _XS(
             XS_prev=self.XS_prev,
-            XW=self.XW_prev, 
-            gammasu=self.gammasu, 
+            XW=self.XW_prev,
+            gammasu=self.gammasu,
             ksu=self.ksu,
             kws=self._parameters["kws"],
             dt=self.dt,
-            )
-    
+        )
+
     @property
     def TmB(self):
         return _TmB(
@@ -231,35 +232,36 @@ class LandModel(pulse.ActiveModel):
             kb=self.kb,
             ku=self._parameters["ku"],
             dt=self.dt,
-            )
-    
+        )
+
     @property
-    def XU(self): 
+    def XU(self):
         return _XU(
             XW=self.XW_prev,
             XS=self.XS_prev,
             TmB=self.TmB_prev,
-            )
+        )
+
     @property
     def gammawu(self):
         return _gammawu(
             Zetaw=self.Zetaw_prev,
             gammaw=self._parameters["gammaw"],
-            )
-    
+        )
+
     @property
     def gammasu(self):
         return _gammasu(
             Zetas=self.Zetas_prev,
             gammas=self._parameters["gammas"],
-            )
+        )
 
     def dLambda(self, lmbda):
         logger.debug("Evaluate dLambda")
         if self.dt == 0:
             return self._dLambda
         else:
-            return (lmbda - self.lmbda_prev)/self.dt
+            return (lmbda - self.lmbda_prev) / self.dt
 
     @property
     def Aw(self):
@@ -307,7 +309,7 @@ class LandModel(pulse.ActiveModel):
             * (1.0 - (rs * scale_popu_rs))
             / (rs * scale_popu_rs)
         )
-            
+
     def update_TmB(self):
         logger.debug("update TmB")
         self._projector(
@@ -320,11 +322,11 @@ class LandModel(pulse.ActiveModel):
                 kb=self.kb,
                 ku=self._parameters["ku"],
                 dt=self.dt,
-                )
-            )
-        
+            ),
+        )
+
     def update_XS(self):
-        logger.debug("update XS") 
+        logger.debug("update XS")
         self._projector(
             self._XS,
             _XS(
@@ -334,9 +336,9 @@ class LandModel(pulse.ActiveModel):
                 ksu=self.ksu,
                 kws=self._parameters["kws"],
                 dt=self.dt,
-                )
-            )
-        
+            ),
+        )
+
     def update_XW(self):
         logger.debug("update XW")
         self._projector(
@@ -349,8 +351,8 @@ class LandModel(pulse.ActiveModel):
                 kuw=self._parameters["kuw"],
                 kwu=self.kwu,
                 dt=self.dt,
-                )
-            )
+            ),
+        )
 
     def update_Zetas(self, lmbda):
         logger.debug("update Zetas")
@@ -401,24 +403,22 @@ class LandModel(pulse.ActiveModel):
             self._scheme,
         )
 
-
     @property
     def dt(self) -> float:
         return self.t - self._t_prev
-
 
     def update_prev(self):
         logger.debug("update previous")
         self.Zetas_prev.vector()[:] = self._Zetas.vector()
         self.Zetaw_prev.vector()[:] = self._Zetaw.vector()
         self.lmbda_prev.vector()[:] = self.lmbda.vector()
-        
+
         """ For CaTrpn split"""
         self.XS_prev.vector()[:] = self._XS.vector()
         self.XW_prev.vector()[:] = self._XW.vector()
         self.TmB_prev.vector()[:] = self._TmB.vector()
         """ """
-        
+
         self._projector.project(self.Ta_current, self.Ta(self.lmbda))
         self._t_prev = self.t
 
@@ -438,13 +438,12 @@ class LandModel(pulse.ActiveModel):
         lmbda = _min(1.2, lmbda)
         h_lambda_prima = 1.0 + Beta0 * (lmbda + _min(lmbda, 0.87) - 1.87)
         h_lambda = _max(0, h_lambda_prima)
-        
+
         return (
             h_lambda
             * (Tref * scale_popu_Tref / (rs * scale_popu_rs))
             * (self.XS * (self.Zetas(lmbda) + 1.0) + self.XW * self.Zetaw(lmbda))
         )
-
 
     def Wactive(self, F, **kwargs):
         """Active stress energy"""
@@ -454,17 +453,17 @@ class LandModel(pulse.ActiveModel):
         f = F * self.f0
         lmbda = dolfin.sqrt(f**2)
         self._projector.project(self.lmbda, lmbda)
-        
+
         # Used to update for next iteration, but not used to calculate Ta,
         # since Ta takes lmda directly
         self.update_Zetas(lmbda=lmbda)
         self.update_Zetaw(lmbda=lmbda)
-        
+
         """ For Catrpn split"""
         self.update_XS()
         self.update_XW()
-        self.update_TmB()   
-        
+        self.update_TmB()
+
         return pulse.material.active_model.Wactive_transversally(
             Ta=self.Ta(lmbda),
             C=C,

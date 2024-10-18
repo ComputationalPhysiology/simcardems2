@@ -259,21 +259,21 @@ if not Path("ep_model.py").exists():
     )
 
     Path("ep_model.py").write_text(code_ep)
-    # Currently 3D mech needs to be written manually 
+    # Currently 3D mech needs to be written manually
 
 import ep_model as _ep_model
 
 ep_model = _ep_model.__dict__
 
-    
-# Validate ep variables to output 
+
+# Validate ep variables to output
 for i in list(set(out_ep_coord_names) | set(out_ep_var_names)):
     try:
         var = ep_model["state_index"](i)
     except KeyError:
         print(f"{i} is not an ep state. Check config file")
         raise
-                
+
 # Forwared generalized rush larsen scheme for the electrophysiology model
 fgr_ep = jit(nopython=True)(ep_model["forward_generalized_rush_larsen"])
 # Monitor function for the electrophysiology model
@@ -289,7 +289,7 @@ p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 
 
 #ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
-ep_mesh = mesh  
+ep_mesh = mesh
 
 time = dolfin.Constant(0.0)
 I_s = define_stimulus(
@@ -334,7 +334,7 @@ missing_mech = interpolation.MissingValue(
 
 missing_mech.values_ep.T[:] = mechanics_missing_values_
 missing_mech.values_mechanics.T[:] = mechanics_missing_values_
-missing_mech.mechanics_values_to_function() # Assign initial values to mech functions 
+missing_mech.mechanics_values_to_function() # Assign initial values to mech functions
 
 
 
@@ -369,7 +369,7 @@ ode = beat.odesolver.DolfinODESolver(
     init_states=y_ep,
     num_states=len(y_ep),
     v_index=ep_model["state_index"]("v"),
-    missing_variables=None, 
+    missing_variables=None,
     num_missing_variables=0,
 )
 
@@ -429,7 +429,7 @@ active_model = LandModel(
     f0=f0,
     s0=s0,
     n0=n0,
-    #CaTrpn=missing_mech.u_mechanics[0],  
+    #CaTrpn=missing_mech.u_mechanics[0],
     CaTrpn=prev_missing_mech.u_mechanics[0],  # Use prev Catrpn in mech to be consistent with zeta split
     mesh=mesh,
     eta=0, #Fraction of transverse active tension for active stress formulation.
@@ -527,7 +527,7 @@ for i, ti in enumerate(t):
     # Assign values to ep function
     for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[ep_model["state_index"](out_ep_var)]
-    
+
     # Store values to plot time series for given coord
     for var_nr in range(config["write_point_ep"]["numbers"]):
         # Trace variable in coordinate
@@ -556,7 +556,7 @@ for i, ti in enumerate(t):
     missing_mech.interpolate_ep_to_mechanics()
     missing_mech.mechanics_function_to_values()
     inds.append(i)
-    
+
     print("Solve mechanics")
     active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
@@ -570,12 +570,12 @@ for i, ti in enumerate(t):
     )
 
     U, p = problem.state.split(deepcopy=True)
-    
+
 
     for var_nr in range(config["write_point_mech"]["numbers"]):
         # Trace variable in coordinate
         out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
-        
+
         out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
             mech_coords[var_nr]
         )
@@ -585,7 +585,7 @@ for i, ti in enumerate(t):
             i
         ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
 
-        
+
     # Use previous Catrpn in mech to be consistent with zeta split
     for i in range(len(mechanics_missing_values_)):
         prev_missing_mech.u_mechanics[i].vector().set_local(missing_mech.values_mechanics[i])

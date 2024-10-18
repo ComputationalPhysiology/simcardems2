@@ -259,21 +259,21 @@ if not Path("ep_model.py").exists():
     )
 
     Path("ep_model.py").write_text(code_ep)
-    # Currently 3D mech needs to be written manually 
+    # Currently 3D mech needs to be written manually
 
 import ep_model as _ep_model
 
 ep_model = _ep_model.__dict__
 
-    
-# Validate ep variables to output 
+
+# Validate ep variables to output
 for i in list(set(out_ep_coord_names) | set(out_ep_var_names)):
     try:
         var = ep_model["state_index"](i)
     except KeyError:
         print(f"{i} is not an ep state. Check config file")
         raise
-                
+
 # Forwared generalized rush larsen scheme for the electrophysiology model
 fgr_ep = jit(nopython=True)(ep_model["forward_generalized_rush_larsen"])
 # Monitor function for the electrophysiology model
@@ -306,7 +306,7 @@ I_s = define_stimulus(
 )
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
-ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1)     
+ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1)
 v_ode = dolfin.Function(ep_ode_space)
 num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)
@@ -321,7 +321,7 @@ mechanics_missing_values_ = np.array([0.0001]) # Init value for cai
 
 
 # Set the activation
-activation_space = dolfin.FunctionSpace(mesh, "DG", 1)    
+activation_space = dolfin.FunctionSpace(mesh, "DG", 1)
 activation = dolfin.Function(activation_space)
 num_points_mech = activation.vector().local_size()
 
@@ -347,7 +347,7 @@ missing_ep.values_ep.T[:] = ep_missing_values_
 
 missing_mech.values_ep.T[:] = mechanics_missing_values_
 missing_mech.values_mechanics.T[:] = mechanics_missing_values_
-missing_mech.mechanics_values_to_function() # Assign initial values to mech functions 
+missing_mech.mechanics_values_to_function() # Assign initial values to mech functions
 
 
 # Create function spaces for ep variables to output
@@ -437,7 +437,7 @@ active_model = LandModel(
 active_model.t = 0.0
 
 
-mech_variables = { 
+mech_variables = {
     "Ta": active_model.Ta_current,
     "Zetas": active_model._Zetas,
     "Zetaw": active_model._Zetaw,
@@ -527,8 +527,8 @@ for i, ti in enumerate(t):
         missing_ep.u_mechanics_int[0].interpolate(active_model._J_TRPN)
         missing_ep.interpolate_mechanics_to_ep()
         missing_ep.ep_function_to_values()
-        
-        
+
+
         for var_nr in range(config["write_point_mech"]["numbers"]):
             # Trace variable in coordinate
             out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
@@ -540,14 +540,14 @@ for i, ti in enumerate(t):
             out_mech_volume_average_timeseries[out_mech_var][
                 i
             ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
-    
+
 
     ep_solver.step((ti, ti + config["sim"]["dt"]))
 
     # Assign values to ep function
     for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[ep_model["state_index"](out_ep_var)]
-    
+
     # Store values to plot time series for given coord
     for var_nr in range(config["write_point_ep"]["numbers"]):
         # Trace variable in coordinate
@@ -559,8 +559,8 @@ for i, ti in enumerate(t):
         out_ep_volume_average_timeseries[out_ep_var][
             i
         ] = compute_function_average_over_mesh(out_ep_funcs[out_ep_var], ep_mesh)
-    
-    if (i+1) % config["sim"]["N"] == 0: # Extract missing values for next mechanics step 
+
+    if (i+1) % config["sim"]["N"] == 0: # Extract missing values for next mechanics step
         print("update missing")
         # Extract missing values for the mechanics step from the ep model (ep function space)
         missing_ep_values = mv_ep(
@@ -569,21 +569,21 @@ for i, ti in enumerate(t):
         # Assign the extracted values as missing_mech for the mech step (ep function space)
         for k in range(missing_mech.num_values):
             missing_mech.u_ep_int[k].vector()[:] = missing_ep_values[k, :]
-    
-    
+
+
         # Interpolate missing variables from ep to mech function space
         missing_mech.interpolate_ep_to_mechanics()
         missing_mech.mechanics_function_to_values()
-        
+
     if i % config["sim"]["N"] == 0:
         inds.append(i)
         print(
             active_model.lmbda.vector().get_local().min(),
             active_model.lmbda.vector().get_local().max(),
         )
-    
+
         U, p = problem.state.split(deepcopy=True)
-    
+
         with dolfin.XDMFFile(disp_file.as_posix()) as file:
             file.write_checkpoint(U, "disp", j, dolfin.XDMFFile.Encoding.HDF5, True)
         for out_ep_var in out_ep_var_names:
@@ -595,7 +595,7 @@ for i, ti in enumerate(t):
                     dolfin.XDMFFile.Encoding.HDF5,
                     True,
                 )
-    
+
         for out_mech_var in out_mech_var_names:
             with dolfin.XDMFFile(out_mech_files[out_mech_var].as_posix()) as file:
                 file.write_checkpoint(

@@ -47,7 +47,7 @@ def assign_surface_markers(
 ) -> dolfin.MeshFunction:
     if markers is None:
         markers = default_markers()
-        
+
 
     # Define domains for each surface
     x0 = dolfin.CompiledSubDomain("near(x[0], 0) && on_boundary")
@@ -84,7 +84,7 @@ surface_func_file.with_suffix(".h5").unlink(missing_ok=True)
 
 print(surface_markers)
 
-with dolfin.XDMFFile(mesh_file.as_posix()) as file: 
-    file.write(mesh)  
+with dolfin.XDMFFile(mesh_file.as_posix()) as file:
+    file.write(mesh)
 with dolfin.XDMFFile(surface_func_file.as_posix()) as xdmf:
     xdmf.write(surface_ffun)

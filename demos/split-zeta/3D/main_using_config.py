@@ -256,14 +256,14 @@ if not Path("ep_model.py").exists():
     )
 
     Path("ep_model.py").write_text(code_ep)
-    # Currently 3D mech needs to be written manually 
+    # Currently 3D mech needs to be written manually
 
 import ep_model as _ep_model
 
 ep_model = _ep_model.__dict__
 
 
-# Validate ep variables to output 
+# Validate ep variables to output
 for i in list(set(out_ep_coord_names) | set(out_ep_var_names)):
     try:
         var = ep_model["state_index"](i)
@@ -304,7 +304,7 @@ I_s = define_stimulus(
 )
 M = define_conductivity_tensor(sigma, chi, C_m)
 params = {"preconditioner": "sor", "use_custom_preconditioner": False}
-ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1)  
+ep_ode_space = dolfin.FunctionSpace(ep_mesh, "DG", 1)
 v_ode = dolfin.Function(ep_ode_space)
 num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)
@@ -315,7 +315,7 @@ y_ep.T[:] = y_ep_
 mechanics_missing_values_ = np.zeros(2)
 
 # Set the activation
-activation_space = dolfin.FunctionSpace(mesh, "DG", 1)  
+activation_space = dolfin.FunctionSpace(mesh, "DG", 1)
 activation = dolfin.Function(activation_space)
 num_points_mech = activation.vector().local_size()
 
@@ -366,7 +366,7 @@ ode = beat.odesolver.DolfinODESolver(
 )
 
 #ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
-ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1) 
+ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1)
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
 
@@ -520,7 +520,7 @@ for i, ti in enumerate(t):
     ep_solver.step((ti, ti + config["sim"]["dt"]))
 
     # Assign values to ep function
-    for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):    
+    for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
         #out_ep_funcs[out_ep_var].vector()[:] = ode._values[out_indices[out_ep_var]]
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[ep_model["state_index"](out_ep_var)]
 

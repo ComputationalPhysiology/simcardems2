@@ -78,7 +78,7 @@ mech.b_fs=0.0
 # STIMULUS PARAMETERS
 stim.start = 0.0
 stim.amplitude = 50000.0 # mu A/cm^3
-stim.duration = 2 # ms  
+stim.duration = 2 # ms
 stim.xmin = 0.0
 stim.xmax = 0.5
 stim.ymin = 0.0
@@ -110,10 +110,9 @@ bcs.2.expression = 0
 bcs.2.param_numbers = 0
 
 #bcs.3.marker = 2
-#bcs.3.type = "Neumann" 
+#bcs.3.type = "Neumann"
 #bcs.3.expression = 'a*t' # Value can be a function of t
 #bcs.3.param_numbers = 1
 #bcs.3.param.0.name = 'a'
 #bcs.3.param.0.value = -0.2
 #bcs.3.degree = 1
-

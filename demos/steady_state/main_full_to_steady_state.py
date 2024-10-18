@@ -5,8 +5,8 @@ import time
 
 # Simulation parameters
 with_twitch = False
-dt = 0.1 
-bcs = 1000 
+dt = 0.1
+bcs = 1000
 beats = 200
 
 # Parameters for starting from an already saved state
@@ -42,7 +42,7 @@ def twitch(t, tstart=0.05, ca_ampl=-0.2):
 def update_lambda_and_dlambda(t, prev_lmbda, dt):
     lmbda_ti = twitch(t)
     p[lmbda_index] = lmbda_ti
-    
+
     dLambda = (lmbda_ti - prev_lmbda)/dt
     p[dLambda_index] = dLambda
     prev_lmbda = lmbda_ti
@@ -55,8 +55,8 @@ file = Path("ToRORd_dynCl_endo_zetasplit.py")
 # Generate model code from .ode file
 rebuild = False
 if not file.is_file() or rebuild:
-        
-    # Generate code for full model. 
+
+    # Generate code for full model.
     code = gotranx.cli.gotran2py.get_code(
         ode,
         scheme=[gotranx.schemes.Scheme.forward_generalized_rush_larsen],
@@ -98,12 +98,12 @@ else:
 p = model["init_parameter_values"]() # Used in lambda update
 
 timing_init = time.perf_counter()
-for beat in range(beats):    
-    
+for beat in range(beats):
+
     V_tmp = Vs[beat * len(t) : (beat + 1) * len(t)]
     Cai_tmp = Cais[beat * len(t) : (beat + 1) * len(t)]
     Ta_tmp = Tas[beat * len(t) : (beat + 1) * len(t)]
-        
+
     if with_twitch:
         prev_lmbda = p[lmbda_index]
         p, prev_lmbda = update_lambda_and_dlambda(np.float64(0), prev_lmbda, dt)
@@ -114,21 +114,21 @@ for beat in range(beats):
         V_tmp[i] = y[V_index]
         Cai_tmp[i] = y[Ca_index]
         Ta_tmp[i] = monitor[Ta_index]
-        
-        if with_twitch:            
+
+        if with_twitch:
             p, prev_lmbda = update_lambda_and_dlambda(ti+dt, prev_lmbda, dt)
         print(f"t: {ti:.12}, beat {beat+1}")
-        
+
 timing_total = time.perf_counter() - timing_init
 
 # Save states
-with open(f"state_{beats+init_beats}beats_twitch{with_twitch}_dt{dt}.txt", "w") as f:        
+with open(f"state_{beats+init_beats}beats_twitch{with_twitch}_dt{dt}.txt", "w") as f:
     np.savetxt(f,y[:])
-        
-with open(f"timings_full_to_beats{beats+init_beats}_twitch{with_twitch}_dt{dt}", "w") as f:        
+
+with open(f"timings_full_to_beats{beats+init_beats}_twitch{with_twitch}_dt{dt}", "w") as f:
     f.write("Total time\n")
     f.write(f"{timing_total}\n")
-    
+
 with open(f"V_full_beats{beats+init_beats}_twitch{with_twitch}_dt{dt}.txt", "w") as f:
     np.savetxt(f, Vs)
 with open(f"Ta_full_beats{beats+init_beats}_twitch{with_twitch}_dt{dt}.txt", "w") as f:
