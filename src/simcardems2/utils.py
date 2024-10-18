@@ -1,3 +1,4 @@
+import typing
 import dolfin
 import numpy as np
 import ufl_legacy as ufl
@@ -58,3 +59,22 @@ class Projector:
 
     def __call__(self, u: dolfin.Function, f: ufl.core.expr.Expr) -> None:
         self.project(u=u, f=f)
+
+
+def float_to_constant(x: typing.Union[dolfin.Constant, float]) -> dolfin.Constant:
+    """Convert float to a dolfin constant.
+    If value is already a constant, do nothing.
+
+    Parameters
+    ----------
+    x : typing.Union[dolfin.Constant, float]
+        The value to be converted
+
+    Returns
+    -------
+    dolfin.Constant
+        The same value, wrapped in a constant
+    """
+    if isinstance(x, float):
+        return dolfin.Constant(x)
+    return x

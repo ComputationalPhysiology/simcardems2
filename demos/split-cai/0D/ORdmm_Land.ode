@@ -158,17 +158,14 @@ cass=0.0001,
 cansr=1.2,
 cajsr=1.2)
 
-states("mechanics-ep",
+states("mechanics",
 XS=0,
 XW=0,
-CaTrpn=0,
-TmB=1)
-
-
-states("mechanics",
+CaTrpn=0.0001,
+TmB=1,
 Zetas=0,
-Zetaw=0)
-
+Zetaw=0,
+Cd=0)
 
 
 ##############################
@@ -598,7 +595,7 @@ Bcai=1.0/(1.0+cmdnmax*kmcmdn/(kmcmdn+cai)**2.0)
 dcai_dt=Bcai*(-(IpCa+ICab-2.0*INaCa_i+Isac_P_ns/3)*Acap/(2.0*F*vmyo)-Jup*vnsr/vmyo+Jdiff*vss/vmyo - J_TRPN)
 
 
-parameters("mechanics-ep", "mechanics",
+parameters("mechanics",
 emcoupling=1,
 lmbda=1,
 dLambda=0,
@@ -629,11 +626,7 @@ p_k = 7,
 etal = 200,
 etas = 20)
 
-expressions("mechanics-ep", "mechanics")
-lambda_min12 = Conditional(Lt(lmbda, 1.2), lmbda, 1.2)
-
-
-expressions("mechanics-ep")
+expressions("mechanics")
 XS_max = Conditional(Gt(XS, 0), XS, 0)
 XW_max = Conditional(Gt(XW, 0), XW, 0)
 CaTrpn_max = Conditional(Gt(CaTrpn, 0), CaTrpn, 0)
@@ -643,8 +636,12 @@ Aw = Tot_A*rs/((1-rs)*rw+rs)
 As = Aw
 cw = phi*kuw*((1-rs)*(1-rw))/((1-rs)*rw)
 cs = phi*kws*((1-rs)*rw)/rs
+lambda_min12 = Conditional(Lt(lmbda, 1.2), lmbda, 1.2)
+lambda_min087 = Conditional(Lt(lambda_min12, 0.87), lambda_min12, 0.87)
+h_lambda_prima = 1+Beta0*(lambda_min12+lambda_min087-1.87)
+h_lambda = Conditional(Gt(h_lambda_prima, 0), h_lambda_prima, 0)
 XU = (1-TmB)-XS-XW
-gammawu = gammaw*Abs(Zetaw)
+gammawu = gammaw*abs(Zetaw)
 gammasu  = gammas*Conditional(Gt(Gt(Zetas,0)*Zetas, Lt(Zetas, -1)*(-Zetas-1)), Gt(Zetas,0)*Zetas, Lt(Zetas, -1)*(-Zetas-1))
 dXS_dt = kws*XW - ksu*XS - gammasu*XS
 dXW_dt = kuw*XU - kwu*XW - kws*XW - gammawu*XW
@@ -652,18 +649,15 @@ cat50 = (cat50_ref+Beta1*(lambda_min12-1))*scale_HF_cat50_ref
 dCaTrpn_dt = ktrpn*(((cai*1000/cat50)**ntrpn)*(1-CaTrpn)-CaTrpn)
 kb = ku*Trpn50**ntm/(1-rs-(1-rs)*rw)
 dTmB_dt =  kb*Conditional(Lt(CaTrpn**(-ntm/2), 100), CaTrpn**(-ntm/2), 100)*XU-ku*CaTrpn**(ntm/2)*TmB
-J_TRPN = dCaTrpn_dt*trpnmax
-
-
-
-expressions("mechanics")
-Aw = Tot_A*rs/((1-rs)*rw+rs)
-As = Aw
-cw = phi*kuw*((1-rs)*(1-rw))/((1-rs)*rw)
-cs = phi*kws*((1-rs)*rw)/rs
 dZetas_dt = As*dLambda - cs*Zetas
 dZetaw_dt = Aw*dLambda - cw*Zetaw
-lambda_min087 = Conditional(Lt(lambda_min12, 0.87), lambda_min12, 0.87)
-h_lambda_prima = 1+Beta0*(lambda_min12+lambda_min087-1.87)
-h_lambda = Conditional(Gt(h_lambda_prima, 0), h_lambda_prima, 0)
 Ta = h_lambda*(Tref/rs)*(XS*(Zetas+1) + XW*Zetaw)
+C = lambda_min12 - 1
+dCd = C - Cd
+eta = Conditional(Lt(dCd, 0), etas, etal)
+dCd_dt = p_k * (C - Cd) / eta
+Fd = eta * dCd
+F1 = (exp( p_b * C) - 1)
+Tp = p_a * (F1 + Fd)
+Ttot = Ta + Tp
+J_TRPN = dCaTrpn_dt*trpnmax

@@ -52,7 +52,7 @@ class ContinuationProblem(NonlinearProblem):
         self._J = J
         self._F = F
 
-        self.bcs = [bcs]
+        self.bcs = enlist(bcs)
 
         # super(ContinuationProblem, self).__init__()
 
@@ -243,6 +243,8 @@ class NewtonSolver(dolfin.NewtonSolver):
     def solve(self, t0: float, dt: float) -> tuple[int, bool]:
         self.t0 = t0
         self.dt = dt
+
+        # self.active.u_prev.assign(self._state.split(deepcopy=True)[0])
 
         self.active._t_prev = t0
 
