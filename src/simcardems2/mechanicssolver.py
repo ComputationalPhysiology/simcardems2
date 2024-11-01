@@ -255,6 +255,19 @@ class NewtonSolver(dolfin.NewtonSolver):
 
         nit, conv = self.super_solve()
 
+        u, p = self._state.split(deepcopy=True)
+        F = ufl.grad(u) + ufl.Identity(3)
+        f = F * self.active.f0
+        lmbda = dolfin.sqrt(f**2)
+        self.active._projector.project(self.active.lmbda, lmbda)
+        if self.active.dt > 0:
+            self.active._projector.project(
+                self.active._dLambda, (lmbda - self.active.lmbda_prev) / self.active.dt
+            )
+        self.active._projector.project(self.active.Ta_current, self.active.Ta(lmbda))
+        self.active.update_Zetas(lmbda=lmbda)
+        self.active.update_Zetaw(lmbda=lmbda)
+
         print("After: ", self._state.vector().get_local()[:10])
 
         if not conv:
@@ -419,3 +432,49 @@ class MechanicsProblem(pulse.MechanicsProblem):
     def solve(self, t0: float, dt: float):
         self._init_forms()
         return self.solver.solve(t0, dt)
+
+
+class CompressibleMechanicsProblem(MechanicsProblem):
+    def _init_spaces(self):
+        mesh = self.geometry.mesh
+
+        element = dolfin.VectorElement("P", mesh.ufl_cell(), 2)
+        self.state_space = dolfin.FunctionSpace(mesh, element)
+        self.state = dolfin.Function(self.state_space)
+        self.state_test = dolfin.TestFunction(self.state_space)
+
+        # Add penalty factor
+        self.kappa = dolfin.Constant(0.01)
+
+    def compressible_energy(self, F):
+        J = ufl.det(F)
+        return self.kappa * (J * ufl.ln(J) - J + 1)
+
+    def _init_forms(self):
+        u = self.state
+        v = self.state_test
+
+        F = dolfin.variable(pulse.kinematics.DeformationGradient(u))
+
+        dx = self.geometry.dx
+
+        # Add penalty term
+        internal_energy = self.material.strain_energy(F) + self.compressible_energy(F)
+
+        self._virtual_work = dolfin.derivative(
+            internal_energy * dx,
+            self.state,
+            self.state_test,
+        )
+
+        external_work = self._external_work(u, v)
+        if external_work is not None:
+            self._virtual_work += external_work
+
+        self._set_dirichlet_bc()
+        self._jacobian = dolfin.derivative(
+            self._virtual_work,
+            self.state,
+            dolfin.TrialFunction(self.state_space),
+        )
+        self._init_solver()

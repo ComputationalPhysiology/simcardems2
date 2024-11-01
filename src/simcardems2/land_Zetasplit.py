@@ -63,6 +63,7 @@ class LandModel(pulse.ActiveModel):
         self._eta = eta
         # self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
         self.function_space = dolfin.FunctionSpace(mesh, "DG", 1)
+        # self.quad_space = pulse.QuadratureSpace(mesh, 4)
         self.u_space = dolfin.VectorFunctionSpace(mesh, "CG", 2)
         self.u_prev = dolfin.Function(self.u_space)
 
@@ -247,14 +248,9 @@ class LandModel(pulse.ActiveModel):
         C = F.T * F
         f = F * self.f0
         lmbda = dolfin.sqrt(f**2)
-        self._projector.project(self.lmbda, lmbda)
-        self.update_Zetas(lmbda=lmbda)
-        self.update_Zetaw(lmbda=lmbda)
-        self._projector.project(self.Ta_current, self.Ta(lmbda))
-        self._projector.project(self._dLambda, self.dLambda(lmbda))
 
         return pulse.material.active_model.Wactive_transversally(
-            Ta=self.Ta(lmbda),
+            Ta=self.Ta(lmbda=lmbda),
             C=C,
             f0=self.f0,
             eta=self.eta,

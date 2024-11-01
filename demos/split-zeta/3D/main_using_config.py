@@ -554,7 +554,7 @@ for i, ti in enumerate(t):
     inds.append(i)
 
     print("Solve mechanics")
-    active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
+    # active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
     active_model.update_prev()
 
