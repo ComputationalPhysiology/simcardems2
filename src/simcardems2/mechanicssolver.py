@@ -245,10 +245,10 @@ class NewtonSolver(dolfin.NewtonSolver):
         self.dt = dt
 
         # self.active.u_prev.assign(self._state.split(deepcopy=True)[0])
+        print(f"{self.active._t_prev = }, {self.active.t = }")
+        # self.active._t_prev = t0
 
-        self.active._t_prev = t0
-
-        self.active.t = t0 + dt
+        # self.active.t = t0 + dt
         print("Solving mechanics")
 
         self._solve_called = True

@@ -282,7 +282,8 @@ lmbda_index_ep = ep_model["parameter_index"]("lmbda")
 
 # Get initial values from the EP model
 y_ep_ = ep_model["init_state_values"]()
-p_ep_ = ep_model["init_parameter_values"](amp=0.0)
+p_ep_ = ep_model["init_parameter_values"](i_Stim_Amplitude=0.0)
+# breakpoint()
 
 ep_missing_values_ = np.zeros(len(ep_model["missing"]))
 
@@ -554,7 +555,8 @@ for i, ti in enumerate(t):
     inds.append(i)
 
     print("Solve mechanics")
-    # active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
+    # active_model._t_prev = ti
+    active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
     active_model.update_prev()
 

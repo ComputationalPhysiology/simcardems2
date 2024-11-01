@@ -246,11 +246,11 @@ class LandModel(pulse.ActiveModel):
         """Active stress energy"""
         logger.debug("Compute active stress energy")
         C = F.T * F
-        f = F * self.f0
-        lmbda = dolfin.sqrt(f**2)
+        # f = F * self.f0
+        # lmbda = dolfin.sqrt(f**2)
 
         return pulse.material.active_model.Wactive_transversally(
-            Ta=self.Ta(lmbda=lmbda),
+            Ta=self.Ta(lmbda=self.lmbda),
             C=C,
             f0=self.f0,
             eta=self.eta,
