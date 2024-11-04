@@ -89,7 +89,7 @@ geometry = pulse.Geometry(
     mesh=mesh, marker_functions=marker_functions, microstructure=microstructure
 )
 
-fig_mean, ax_mean = plt.subplots(2, 1, sharex=True)
+fig_mean, ax_mean = plt.subplots(3, 1, sharex=True)
 fig_u, ax_u = plt.subplots(3, 2, sharex=True, sharey="row")
 for k, N in enumerate([1, 400]):
     xdmffile_ta = f"check_Ta/N{N}/Ta_out_mech.xdmf"
@@ -110,9 +110,19 @@ for k, N in enumerate([1, 400]):
     Tas = []
     lmbdas = []
     lmbdas_U = []
+    dlmbdas = []
+    dlmbdas_U = []
     Ta = dolfin.Function(W)
     lmbda = dolfin.Function(W)
     lmbda_U = dolfin.Function(W)
+
+    lmbda_prev = dolfin.Function(W)
+    lmbda_U_prev = dolfin.Function(W)
+    lmbda_prev.vector()[:] = 1.0
+    lmbda_U_prev.vector()[:] = 1.0
+
+    dlmbda = dolfin.Function(W)
+    dlmbda_U = dolfin.Function(W)
 
     ux = []
     uy = []
@@ -150,9 +160,17 @@ for k, N in enumerate([1, 400]):
         lmda_expr = ufl.sqrt(ufl.inner(F * f0, F * f0))
         lmbda.assign(dolfin.project(lmda_expr, W))
 
+        dlmbda.assign(lmbda - lmbda_prev)
+        lmbda_prev.vector()[:] = lmbda.vector()[:]
+
+
+
         F_U = ufl.grad(U) + ufl.Identity(3)
         lmda_expr_U = ufl.sqrt(ufl.inner(F_U * f0, F_U * f0))
         lmbda_U.assign(dolfin.project(lmda_expr_U, W))
+
+        dlmbda_U.assign(lmbda_U - lmbda_U_prev)
+        lmbda_U_prev.vector()[:] = lmbda_U.vector()[:]
 
         ux.append(dolfin.assemble(u.sub(0) * dolfin.dx))
         uy.append(dolfin.assemble(u.sub(1) * dolfin.dx))
@@ -176,6 +194,8 @@ for k, N in enumerate([1, 400]):
         Ta_mean.append(dolfin.assemble(Ta * dolfin.dx))
         lmbda_mean.append(dolfin.assemble(lmda_expr * dolfin.dx))
         lmbda_U_mean.append(dolfin.assemble(lmda_expr_U * dolfin.dx))
+        dlmbdas.append(dolfin.assemble(dlmbda * dolfin.dx))
+        dlmbdas_U.append(dolfin.assemble(dlmbda_U * dolfin.dx))
 
     Tas = np.array(Tas)
     lmbdas = np.array(lmbdas)
@@ -217,6 +237,8 @@ for k, N in enumerate([1, 400]):
     ax_mean[0].plot(Ta_mean, label=f"N={N}")
     ax_mean[1].plot(lmbda_mean, label=f"N={N}")
     ax_mean[1].plot(lmbda_U_mean, label=f"N={N} (saved)")
+    ax_mean[2].plot(dlmbdas, label=f"N={N}")
+    ax_mean[2].plot(dlmbdas_U, label=f"N={N} (saved)")
 
 for axi in ax_mean:
     axi.grid()

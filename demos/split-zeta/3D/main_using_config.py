@@ -555,10 +555,8 @@ for i, ti in enumerate(t):
     inds.append(i)
 
     print("Solve mechanics")
-    # active_model._t_prev = ti
     active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
-    active_model.update_prev()
 
     missing_ep.u_mechanics_int[0].interpolate(active_model._Zetas)
     missing_ep.u_mechanics_int[1].interpolate(active_model._Zetaw)
@@ -573,18 +571,6 @@ for i, ti in enumerate(t):
     )
 
     U, p = problem.state.split(deepcopy=True)
-    F = ufl.variable(ufl.grad(U) + ufl.Identity(3))
-    psi = material.strain_energy(F) + p * (ufl.det(F) - 1)
-    psi_active = active_model.Wactive(F)
-
-    P = ufl.diff(psi, F)
-    Cauchy = pulse.kinematics.InversePiolaTransform(P, F)
-    P_active = ufl.diff(psi_active, F)
-    Cauchy_active = pulse.kinematics.InversePiolaTransform(P_active, F)
-    f = F * f0
-    sigma_ff.vector()[:] = dolfin.project(ufl.inner(Cauchy * f, f), activation_space).vector()
-    sigma_ff_active.vector()[:] = dolfin.project(ufl.inner(Cauchy_active * f, f), activation_space).vector()
-    sigma_ff_passive.vector()[:] = sigma_ff.vector() - sigma_ff_active.vector()
 
     for var_nr in range(config["write_point_mech"]["numbers"]):
         out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
