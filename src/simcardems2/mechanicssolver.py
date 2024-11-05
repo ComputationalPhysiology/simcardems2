@@ -3,6 +3,7 @@ import pulse
 import logging
 import ufl_legacy as ufl
 from collections import deque
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class ContinuationProblem(NonlinearProblem):
         self._J = J
         self._F = F
 
-        self.bcs = [bcs]
+        self.bcs = enlist(bcs)
 
         # super(ContinuationProblem, self).__init__()
 
@@ -128,6 +129,7 @@ class NewtonSolver(dolfin.NewtonSolver):
         self._problem = problem
         self._state = state
         self._update_cb = update_cb
+        self._tmp_state = dolfin.Function(state.function_space())
         self._prev_state = dolfin.Vector(state.vector().copy())
         self._diff = dolfin.Vector(state.vector().copy())
         #
@@ -138,6 +140,7 @@ class NewtonSolver(dolfin.NewtonSolver):
             self.petsc_solver,
             dolfin.PETScFactory.instance(),
         )
+
         self._handle_parameters(parameters)
         # self.dt_mech = 10.0
         # self.t_mech = 0.0
@@ -240,18 +243,36 @@ class NewtonSolver(dolfin.NewtonSolver):
     def super_solve(self):
         return super().solve(self._problem, self._state.vector())
 
-    def solve(self, t0: float, dt: float) -> tuple[int, bool]:
+    def solve(self, t0: float, dt: float) -> Tuple[int, bool]:
         self.t0 = t0
         self.dt = dt
 
-        self.active._t_prev = t0
+        # self.active.u_prev.assign(self._state.split(deepcopy=True)[0])
+        print(f"{self.active._t_prev = }, {self.active.t = }")
+        # self.active._t_prev = t0
 
-        self.active.t = t0 + dt
+        # self.active.t = t0 + dt
         print("Solving mechanics")
 
         self._solve_called = True
 
         nit, conv = self.super_solve()
+
+        u, p = self._state.split(deepcopy=True)
+
+        F = ufl.grad(u) + ufl.Identity(3)
+        f = F * self.active.f0
+        lmbda = dolfin.sqrt(f**2)
+
+        self.active._projector.project(self.active.lmbda, lmbda)
+        if self.active.dt > 0:
+            self.active._projector.project(
+                self.active._dLambda, (lmbda - self.active.lmbda_prev) / self.active.dt
+            )
+
+        self.active._projector.project(self.active.Ta_current, self.active.Ta(lmbda))
+        self.active.update_current(lmbda=lmbda)
+        self.active.update_prev()
 
         print("After: ", self._state.vector().get_local()[:10])
 
@@ -288,109 +309,45 @@ class NewtonSolver(dolfin.NewtonSolver):
             self._update_cb(x)
 
 
-class GuccioneMaterial:
-    def __init__(self, params):
-        params = params or {}
-        self._parameters = self.default_parameters()
-        self._parameters.update(params)
-
-    @staticmethod
-    def default_parameters():
-        p = {
-            "C": 2.0,
-            "bf": 8.0,
-            "bt": 2.0,
-            "bfs": 4.0,
-            "e1": None,
-            "e2": None,
-            "e3": None,
-            "kappa": None,
-            "Tactive": None,
-        }
-        return p
-
-    def is_isotropic(self):
-        """
-        Return True if the material is isotropic.
-        """
-        p = self._parameters
-        return p["bt"] == 1.0 and p["bf"] == 1.0 and p["bfs"] == 1.0
-
-    def is_incompressible(self):
-        """
-        Return True if the material is incompressible.
-        """
-        return self._parameters["kappa"] is None
-
-    def strain_energy(self, F, p=None):
-        """
-        UFL form of the strain energy.
-        """
-        params = self._parameters
-
-        I = ufl.Identity(3)
-        J = ufl.det(F)
-        C = pow(J, -float(2) / 3) * F.T * F
-        E = 0.5 * (C - I)
-
-        CC = dolfin.Constant(params["C"], name="C")
-        if self.is_isotropic():
-            # isotropic case
-            Q = ufl.inner(E, E)
-        else:
-            # fully anisotropic
-            bt = dolfin.Constant(params["bt"], name="bt")
-            bf = dolfin.Constant(params["bf"], name="bf")
-            bfs = dolfin.Constant(params["bfs"], name="bfs")
-
-            e1 = params["e1"]
-            e2 = params["e2"]
-            e3 = params["e3"]
-
-            E11, E12, E13 = (
-                ufl.inner(E * e1, e1),
-                ufl.inner(E * e1, e2),
-                ufl.inner(E * e1, e3),
-            )
-            E21, E22, E23 = (
-                ufl.inner(E * e2, e1),
-                ufl.inner(E * e2, e2),
-                ufl.inner(E * e2, e3),
-            )
-            E31, E32, E33 = (
-                ufl.inner(E * e3, e1),
-                ufl.inner(E * e3, e2),
-                ufl.inner(E * e3, e3),
-            )
-
-            Q = (
-                bf * E11**2
-                + bt * (E22**2 + E33**2 + E23**2 + E32**2)
-                + bfs * (E12**2 + E21**2 + E13**2 + E31**2)
-            )
-
-        # passive strain energy
-        Wpassive = CC / 2.0 * (ufl.exp(Q) - 1)
-
-        # active strain energy
-        if params["Tactive"] is not None:
-            self.Tactive = params["Tactive"]
-            I4 = ufl.inner(C * e1, e1)
-            Wactive = self.Tactive / 2.0 * (I4 - 1)
-        else:
-            Wactive = 0.0
-
-        # incompressibility
-        if params["kappa"] is not None:
-            kappa = dolfin.Constant(params["kappa"], name="kappa")
-            Winc = kappa * (J**2 - 1 - 2 * ufl.ln(J))
-        else:
-            Winc = -p * (J - 1)
-
-        return Wpassive + Wactive + Winc
-
-
 class MechanicsProblem(pulse.MechanicsProblem):
+    def _init_forms(self):
+        logger.debug("Initialize forms mechanics problem")
+        # Displacement and hydrostatic_pressure
+        u, p = dolfin.split(self.state)
+        v, q = dolfin.split(self.state_test)
+
+        # Some mechanical quantities
+        F = dolfin.variable(ufl.grad(u) + ufl.Identity(3))
+        J = ufl.det(F)
+        dx = self.geometry.dx
+
+        internal_energy = self.material.strain_energy(
+            F,
+        ) + self.material.compressibility(p, J)
+
+        self._virtual_work = dolfin.derivative(
+            internal_energy * dx,
+            self.state,
+            self.state_test,
+        )
+        f0 = self.material.active.f0
+        f = F * f0
+        lmbda = ufl.sqrt(f**2)
+        Pa = self.material.active.Ta(lmbda) * ufl.outer(f, f0)
+        self._virtual_work += ufl.inner(Pa, ufl.grad(v)) * dx
+
+        external_work = self._external_work(u, v)
+        if external_work is not None:
+            self._virtual_work += external_work
+
+        self._set_dirichlet_bc()
+        self._jacobian = dolfin.derivative(
+            self._virtual_work,
+            self.state,
+            dolfin.TrialFunction(self.state_space),
+        )
+        self._init_solver()
+
     def _init_solver(self):
         if hasattr(self, "_dirichlet_bc"):
             bcs = self._dirichlet_bc
@@ -417,3 +374,77 @@ class MechanicsProblem(pulse.MechanicsProblem):
     def solve(self, t0: float, dt: float):
         self._init_forms()
         return self.solver.solve(t0, dt)
+
+
+class Problem:
+    def __init__(self, geometry, material_pre, material_post, bcs) -> None:
+        self.pre = MechanicsProblem(geometry, material_pre, bcs)
+        self.post = pulse.MechanicsProblem(geometry, material_post, bcs)
+        self.post.solve()
+
+    def solve(self, t0: float, dt: float):
+        self.pre.solve(t0, dt)
+        # breakpoint()
+        self.post.state.vector()[:] = self.pre.state.vector()
+        self.post.solve()
+        u, p = self.post.state.split(deepcopy=True)
+        # self.active.u.interpolate(u)
+        # print(u.vector().get_local().min(), u.vector().get_local().max())
+        F = ufl.grad(u) + ufl.Identity(3)
+
+        f = F * self.pre.solver.active.f0
+        lmbda = dolfin.sqrt(f**2)
+        self.pre.solver.active._projector.project(self.pre.solver.active.lmbda, lmbda)
+        # self.pre.solver.active.update_Zetas(lmbda=lmbda)
+        # self.pre.solver.active.update_Zetaw(lmbda=lmbda)
+        # breakpoint()
+
+    @property
+    def state(self):
+        return self.post.state
+
+
+class CompressibleMechanicsProblem(MechanicsProblem):
+    def _init_spaces(self):
+        mesh = self.geometry.mesh
+
+        element = dolfin.VectorElement("P", mesh.ufl_cell(), 2)
+        self.state_space = dolfin.FunctionSpace(mesh, element)
+        self.state = dolfin.Function(self.state_space)
+        self.state_test = dolfin.TestFunction(self.state_space)
+
+        # Add penalty factor
+        self.kappa = dolfin.Constant(0.01)
+
+    def compressible_energy(self, F):
+        J = ufl.det(F)
+        return self.kappa * (J * ufl.ln(J) - J + 1)
+
+    def _init_forms(self):
+        u = self.state
+        v = self.state_test
+
+        F = dolfin.variable(pulse.kinematics.DeformationGradient(u))
+
+        dx = self.geometry.dx
+
+        # Add penalty term
+        internal_energy = self.material.strain_energy(F) + self.compressible_energy(F)
+
+        self._virtual_work = dolfin.derivative(
+            internal_energy * dx,
+            self.state,
+            self.state_test,
+        )
+
+        external_work = self._external_work(u, v)
+        if external_work is not None:
+            self._virtual_work += external_work
+
+        self._set_dirichlet_bc()
+        self._jacobian = dolfin.derivative(
+            self._virtual_work,
+            self.state,
+            dolfin.TrialFunction(self.state_space),
+        )
+        self._init_solver()
