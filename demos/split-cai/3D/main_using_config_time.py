@@ -23,7 +23,7 @@ from simcardems2.land_caisplit import LandModel
 from simcardems2.validate_input_types import validate_input_types
 
 plot_results = True
-write_disp = False
+write_disp = True
 
 try:
     raise ImportError
@@ -285,7 +285,7 @@ mv_ep = ep_model["missing_values"]
 
 # Get initial values from the EP model
 y_ep_ = ep_model["init_state_values"]()
-p_ep_ = ep_model["init_parameter_values"](amp=0.0)
+p_ep_ = ep_model["init_parameter_values"](i_Stim_Amplitude=0.0)
 
 #ep_missing_values_ = np.zeros(len(ep_model["missing"])) # Init value for J_TRPN
 ep_missing_values_ = np.array([0.00010730972184715098])# Init value for J_TRPN = dCaTrpn_dt * trpnmax (to compare with zetasplit)

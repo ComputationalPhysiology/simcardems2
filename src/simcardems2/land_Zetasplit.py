@@ -63,7 +63,9 @@ class LandModel(pulse.ActiveModel):
         self._eta = eta
         # self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
         self.function_space = dolfin.FunctionSpace(mesh, "DG", 1)
+        # self.quad_space = pulse.QuadratureSpace(mesh, 4)
         self.u_space = dolfin.VectorFunctionSpace(mesh, "CG", 2)
+        self.u = dolfin.Function(self.u_space)
         self.u_prev = dolfin.Function(self.u_space)
 
         self.XS = XS
@@ -73,6 +75,11 @@ class LandModel(pulse.ActiveModel):
         self._parameters = parameters
 
         self._scheme = scheme
+        # self.Ta_before = []
+        # self.Ta_after = []
+        # self.lmbda_before = []
+        # self.lmbda_after = []
+        # self.times = []
 
         self._dLambda = dolfin.Function(self.function_space)
         self.lmbda_prev = dolfin.Function(self.function_space)
@@ -99,6 +106,12 @@ class LandModel(pulse.ActiveModel):
     # @property
     # def lmbda_prev(self):
     #     F = dolfin.grad(self.u_prev) + ufl.Identity(3)
+    #     f = F * self.f0
+    #     return dolfin.sqrt(f**2)
+
+    # @property
+    # def lmbda_u(self):
+    #     F = dolfin.grad(self.u) + ufl.Identity(3)
     #     f = F * self.f0
     #     return dolfin.sqrt(f**2)
 
@@ -210,6 +223,10 @@ class LandModel(pulse.ActiveModel):
     def dt(self) -> float:
         return self.t - self._t_prev
 
+    def update_current(self, lmbda):
+        self.update_Zetas(lmbda=lmbda)
+        self.update_Zetaw(lmbda=lmbda)
+
     def update_prev(self):
         logger.debug("update previous")
         self.Zetas_prev.vector()[:] = self._Zetas.vector()
@@ -235,27 +252,11 @@ class LandModel(pulse.ActiveModel):
         h_lambda_prima = 1.0 + Beta0 * (lmbda + _min(lmbda, 0.87) - 1.87)
         h_lambda = _max(0, h_lambda_prima)
 
+        Zetas = self.Zetas(lmbda)
+        Zetaw = self.Zetaw(lmbda)
+
         return (
             h_lambda
             * (Tref * scale_popu_Tref / (rs * scale_popu_rs))
-            * (self.XS * (self.Zetas(lmbda) + 1.0) + self.XW * self.Zetaw(lmbda))
-        )
-
-    def Wactive(self, F, **kwargs):
-        """Active stress energy"""
-        logger.debug("Compute active stress energy")
-        C = F.T * F
-        f = F * self.f0
-        lmbda = dolfin.sqrt(f**2)
-        self._projector.project(self.lmbda, lmbda)
-        self.update_Zetas(lmbda=lmbda)
-        self.update_Zetaw(lmbda=lmbda)
-        self._projector.project(self.Ta_current, self.Ta(lmbda))
-        self._projector.project(self._dLambda, self.dLambda(lmbda))
-
-        return pulse.material.active_model.Wactive_transversally(
-            Ta=self.Ta(lmbda),
-            C=C,
-            f0=self.f0,
-            eta=self.eta,
+            * (self.XS * (Zetas + 1.0) + self.XW * Zetaw)
         )

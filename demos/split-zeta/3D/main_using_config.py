@@ -282,7 +282,8 @@ lmbda_index_ep = ep_model["parameter_index"]("lmbda")
 
 # Get initial values from the EP model
 y_ep_ = ep_model["init_state_values"]()
-p_ep_ = ep_model["init_parameter_values"](amp=0.0)
+p_ep_ = ep_model["init_parameter_values"](i_Stim_Amplitude=0.0)
+# breakpoint()
 
 ep_missing_values_ = np.zeros(len(ep_model["missing"]))
 
@@ -447,12 +448,6 @@ mech_variables = {
     "sigma_ff_passive": sigma_ff_passive,
 }
 
-# Validate mechanics variables to output
-for out_mech_var in list(set(out_mech_coord_names) | set(out_mech_var_names)):
-    assert (
-        out_mech_var in mech_variables
-    ), f"Error: '{out_mech_var}' is not a valid variable name. Check config file"
-
 material = pulse.HolzapfelOgden(
     parameters=material_parameters,
     active_model=active_model,
@@ -474,6 +469,16 @@ bcs = create_boundary_conditions(
 
 problem = mechanicssolver.MechanicsProblem(geometry, material, bcs)
 problem.solve(0.0, 0.0)
+
+mech_variables["p"] = problem.state.split()[1]
+
+
+# Validate mechanics variables to output
+for out_mech_var in list(set(out_mech_coord_names) | set(out_mech_var_names)):
+    assert (
+        out_mech_var in mech_variables
+    ), f"Error: '{out_mech_var}' is not a valid variable name. Check config file"
+
 
 disp_file = Path(outdir / "disp.xdmf")
 disp_file.unlink(missing_ok=True)
@@ -552,7 +557,6 @@ for i, ti in enumerate(t):
     print("Solve mechanics")
     active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
-    active_model.update_prev()
 
     missing_ep.u_mechanics_int[0].interpolate(active_model._Zetas)
     missing_ep.u_mechanics_int[1].interpolate(active_model._Zetaw)
@@ -567,18 +571,6 @@ for i, ti in enumerate(t):
     )
 
     U, p = problem.state.split(deepcopy=True)
-    F = ufl.variable(ufl.grad(U) + ufl.Identity(3))
-    psi = material.strain_energy(F) + p * (ufl.det(F) - 1)
-    psi_active = active_model.Wactive(F)
-
-    P = ufl.diff(psi, F)
-    Cauchy = pulse.kinematics.InversePiolaTransform(P, F)
-    P_active = ufl.diff(psi_active, F)
-    Cauchy_active = pulse.kinematics.InversePiolaTransform(P_active, F)
-    f = F * f0
-    sigma_ff.vector()[:] = dolfin.project(ufl.inner(Cauchy * f, f), activation_space).vector()
-    sigma_ff_active.vector()[:] = dolfin.project(ufl.inner(Cauchy_active * f, f), activation_space).vector()
-    sigma_ff_passive.vector()[:] = sigma_ff.vector() - sigma_ff_active.vector()
 
     for var_nr in range(config["write_point_mech"]["numbers"]):
         out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
