@@ -20,8 +20,8 @@ from simcardems2 import interpolation
 from simcardems2.land_Zetasplit import LandModel
 from simcardems2.validate_input_types import validate_input_types
 
-plot_results = False
-write_disp = False
+plot_results = True
+write_disp = True
 
 
 try:
@@ -285,7 +285,7 @@ lmbda_index_ep = ep_model["parameter_index"]("lmbda")
 
 # Get initial values from the EP model
 y_ep_ = ep_model["init_state_values"]()
-p_ep_ = ep_model["init_parameter_values"](amp=0.0)
+p_ep_ = ep_model["init_parameter_values"](i_Stim_Amplitude=0.0)
 
 ep_missing_values_ = np.zeros(len(ep_model["missing"]))
 
@@ -435,6 +435,10 @@ active_model = LandModel(
 )
 active_model.t = 0.0
 
+sigma_ff = dolfin.Function(activation_space)
+sigma_ff_active = dolfin.Function(activation_space)
+sigma_ff_passive = dolfin.Function(activation_space)
+
 
 mech_variables = {
     "Ta": active_model.Ta_current,
@@ -443,6 +447,10 @@ mech_variables = {
     "lambda": active_model.lmbda,
     "XS":active_model.XS,
     "XW":active_model.XW,
+    "dLambda":active_model._dLambda,
+    "sigma_ff": sigma_ff,
+    "sigma_ff_active": sigma_ff_active,
+    "sigma_ff_passive": sigma_ff_passive,
 }
 
 # Validate mechanics variables to output

@@ -223,6 +223,10 @@ class LandModel(pulse.ActiveModel):
     def dt(self) -> float:
         return self.t - self._t_prev
 
+    def update_current(self, lmbda):
+        self.update_Zetas(lmbda=lmbda)
+        self.update_Zetaw(lmbda=lmbda)
+
     def update_prev(self):
         logger.debug("update previous")
         self.Zetas_prev.vector()[:] = self._Zetas.vector()

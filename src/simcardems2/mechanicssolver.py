@@ -3,6 +3,7 @@ import pulse
 import logging
 import ufl_legacy as ufl
 from collections import deque
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -242,7 +243,7 @@ class NewtonSolver(dolfin.NewtonSolver):
     def super_solve(self):
         return super().solve(self._problem, self._state.vector())
 
-    def solve(self, t0: float, dt: float) -> tuple[int, bool]:
+    def solve(self, t0: float, dt: float) -> Tuple[int, bool]:
         self.t0 = t0
         self.dt = dt
 
@@ -270,8 +271,7 @@ class NewtonSolver(dolfin.NewtonSolver):
             )
 
         self.active._projector.project(self.active.Ta_current, self.active.Ta(lmbda))
-        self.active.update_Zetas(lmbda=lmbda)
-        self.active.update_Zetaw(lmbda=lmbda)
+        self.active.update_current(lmbda=lmbda)
         self.active.update_prev()
 
         print("After: ", self._state.vector().get_local()[:10])

@@ -510,18 +510,26 @@ class LandModel(pulse.ActiveModel):
     def dt(self) -> float:
         return self.t - self._t_prev
 
+    def update_current(self, lmbda):
+        self.update_Zetas(lmbda=lmbda)
+        self.update_Zetaw(lmbda=lmbda)
+        self.update_XS()
+        self.update_XW()
+        self.update_TmB()
+        self.update_CaTrpn(lmbda)
+        self.calculate_J_TRPN(lmbda)  # Missing in ep
+
     def update_prev(self):
         logger.debug("update previous")
         self.Zetas_prev.vector()[:] = self._Zetas.vector()
         self.Zetaw_prev.vector()[:] = self._Zetaw.vector()
         self.lmbda_prev.vector()[:] = self.lmbda.vector()
+        print("lmbda", self.lmbda_prev.vector()[0])
 
-        """ For CaTrpn split"""
         self.XS_prev.vector()[:] = self._XS.vector()
         self.XW_prev.vector()[:] = self._XW.vector()
         self.TmB_prev.vector()[:] = self._TmB.vector()
         self.CaTrpn_prev.vector()[:] = self._CaTrpn.vector()
-        """ """
 
         self._projector.project(self.Ta_current, self.Ta(self.lmbda))
         self._t_prev = self.t
@@ -543,38 +551,11 @@ class LandModel(pulse.ActiveModel):
         h_lambda_prima = 1.0 + Beta0 * (lmbda + _min(lmbda, 0.87) - 1.87)
         h_lambda = _max(0, h_lambda_prima)
 
+        Zetas = self.Zetas(lmbda)
+        Zetaw = self.Zetaw(lmbda)
+
         return (
             h_lambda
             * (Tref * scale_popu_Tref / (rs * scale_popu_rs))
-            * (self.XS * (self.Zetas(lmbda) + 1.0) + self.XW * self.Zetaw(lmbda))
-        )
-
-    def Wactive(self, F, **kwargs):
-        """Active stress energy"""
-        logger.debug("Compute active stress energy")
-        C = F.T * F
-        C = F.T * F
-        f = F * self.f0
-        lmbda = dolfin.sqrt(f**2)
-        self._projector.project(self.lmbda, lmbda)
-
-        # Used to update for next iteration, but not used to calculate Ta,
-        # since Ta takes lmda directly
-        self.update_Zetas(lmbda=lmbda)
-        self.update_Zetaw(lmbda=lmbda)
-
-        """ For Catrpn split"""
-        self.update_XS()
-        self.update_XW()
-        self.update_TmB()
-
-        """ New for cai split"""
-        self.update_CaTrpn(lmbda)
-        self.calculate_J_TRPN(lmbda)  # Missing in ep
-
-        return pulse.material.active_model.Wactive_transversally(
-            Ta=self.Ta(lmbda),
-            C=C,
-            f0=self.f0,
-            eta=self.eta,
+            * (self.XS * (Zetas + 1.0) + self.XW * Zetaw)
         )

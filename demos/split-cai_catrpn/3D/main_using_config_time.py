@@ -23,7 +23,7 @@ from simcardems2.land_CaTrpnsplit import LandModel
 from simcardems2.validate_input_types import validate_input_types
 
 plot_results = True
-write_disp = False
+write_disp = True
 
 try:
     raise ImportError
@@ -286,7 +286,7 @@ lmbda_index_ep = ep_model["parameter_index"]("lmbda")
 
 # Get initial values from the EP model
 y_ep_ = ep_model["init_state_values"]()
-p_ep_ = ep_model["init_parameter_values"](amp=0.0)
+p_ep_ = ep_model["init_parameter_values"](i_Stim_Amplitude=0.0)
 
 
 #ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
