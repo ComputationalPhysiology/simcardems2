@@ -3,31 +3,12 @@ import dolfin
 import ufl_legacy as ufl
 import logging
 import numpy as np
-from enum import Enum
-
 from . import utils
 
 logger = logging.getLogger(__name__)
 
 
-class Scheme(str, Enum):
-    fd = "fd"
-    bd = "bd"
-    analytic = "analytic"
-
-
-def _Zeta(Zeta_prev, A, c, dLambda, dt, scheme: Scheme):
-    # if scheme == Scheme.analytic:
-    dZetas_dt = A * dLambda - Zeta_prev * c
-    dZetas_dt_linearized = -c
-    if abs(c) > 1e-8:
-        return Zeta_prev + dZetas_dt * (np.exp(-c * dt) - 1.0) / dZetas_dt_linearized
-    else:
-        # Forward euler
-        return Zeta_prev + dZetas_dt * dt
-
-
-_parameters = {
+land_parameters = {
     "Beta0": 2.3,
     "Tot_A": 25.0,
     "Tref": 120,
@@ -53,7 +34,6 @@ class LandModel(pulse.ActiveModel):
         Zetaw=None,
         lmbda=None,
         eta=0,
-        scheme: Scheme = Scheme.analytic,
         dLambda_tol: float = 1e-12,
         **kwargs,
     ):
@@ -61,9 +41,7 @@ class LandModel(pulse.ActiveModel):
         super().__init__(f0=f0, s0=s0, n0=n0)
 
         self._eta = eta
-        # self.function_space = dolfin.FunctionSpace(mesh, "DG", 0)
         self.function_space = dolfin.FunctionSpace(mesh, "DG", 1)
-        # self.quad_space = pulse.QuadratureSpace(mesh, 4)
         self.u_space = dolfin.VectorFunctionSpace(mesh, "CG", 2)
         self.u = dolfin.Function(self.u_space)
         self.u_prev = dolfin.Function(self.u_space)
@@ -71,16 +49,8 @@ class LandModel(pulse.ActiveModel):
         self.XS = XS
         self.XW = XW
         if parameters is None:
-            parameters = _parameters
+            parameters = land_parameters
         self._parameters = parameters
-
-        self._scheme = scheme
-        # self.Ta_before = []
-        # self.Ta_after = []
-        # self.lmbda_before = []
-        # self.lmbda_after = []
-        # self.times = []
-
         self._dLambda = dolfin.Function(self.function_space)
         self.lmbda_prev = dolfin.Function(self.function_space)
         self.lmbda_prev.vector()[:] = 1.0
@@ -103,19 +73,15 @@ class LandModel(pulse.ActiveModel):
         self._dLambda_tol = dLambda_tol
         self._t_prev = 0.0
 
-    # @property
-    # def lmbda_prev(self):
-    #     F = dolfin.grad(self.u_prev) + ufl.Identity(3)
-    #     f = F * self.f0
-    #     return dolfin.sqrt(f**2)
+    def Zeta_eq(self, Zeta_prev, A, c, dLambda, dt):
+        dZetas_dt = A * dLambda - Zeta_prev * c
+        dZetas_dt_linearized = -c
+        if abs(c) > 1e-8:
+            return Zeta_prev + dZetas_dt * (np.exp(-c * dt) - 1.0) / dZetas_dt_linearized
+        else:
+            # Forward euler
+            return Zeta_prev + dZetas_dt * dt
 
-    # @property
-    # def lmbda_u(self):
-    #     F = dolfin.grad(self.u) + ufl.Identity(3)
-    #     f = F * self.f0
-    #     return dolfin.sqrt(f**2)
-
-    # @property
     def dLambda(self, lmbda):
         logger.debug("Evaluate dLambda")
         if self.dt == 0:
@@ -128,8 +94,8 @@ class LandModel(pulse.ActiveModel):
         Tot_A = self._parameters["Tot_A"]
         rs = self._parameters["rs"]
         rw = self._parameters["rw"]
-        scale_popu_rw = 1.0  # self._parameters["scale_popu_rw"]
-        scale_popu_rs = 1.0  # self._parameters["scale_popu_rs"]
+        scale_popu_rw = 1.0
+        scale_popu_rs = 1.0
         return (
             Tot_A
             * rs
@@ -147,8 +113,8 @@ class LandModel(pulse.ActiveModel):
         kuw = self._parameters["kuw"]
         rw = self._parameters["rw"]
 
-        scale_popu_kuw = 1.0  # self._parameters["scale_popu_kuw"]
-        scale_popu_rw = 1.0  # self._parameters["scale_popu_rw"]
+        scale_popu_kuw = 1.0
+        scale_popu_rw = 1.0
         return kuw * scale_popu_kuw * phi * (1.0 - (rw * scale_popu_rw)) / (rw * scale_popu_rw)
 
     @property
@@ -157,9 +123,9 @@ class LandModel(pulse.ActiveModel):
         kws = self._parameters["kws"]
         rs = self._parameters["rs"]
         rw = self._parameters["rw"]
-        scale_popu_kws = 1.0  # self._parameters["scale_popu_kws"]
-        scale_popu_rw = 1.0  # self._parameters["scale_popu_rw"]
-        scale_popu_rs = 1.0  # self._parameters["scale_popu_rs"]
+        scale_popu_kws = 1.0
+        scale_popu_rw = 1.0
+        scale_popu_rs = 1.0
         return (
             kws
             * scale_popu_kws
@@ -174,49 +140,44 @@ class LandModel(pulse.ActiveModel):
         logger.debug("update Zetas")
         self._projector(
             self._Zetas,
-            _Zeta(
+            self.Zeta_eq(
                 self.Zetas_prev,
                 self.As,
                 self.cs,
                 self.dLambda(lmbda),
                 self.dt,
-                self._scheme,
             ),
         )
 
     def Zetas(self, lmbda):
-        # return self._Zetas
-        return _Zeta(
+        return self.Zeta_eq(
             self.Zetas_prev,
             self.As,
             self.cs,
             self.dLambda(lmbda),
             self.dt,
-            self._scheme,
         )
 
     def update_Zetaw(self, lmbda):
         logger.debug("update Zetaw")
         self._projector(
             self._Zetaw,
-            _Zeta(
+            self.Zeta_eq(
                 self.Zetaw_prev,
                 self.Aw,
                 self.cw,
                 self.dLambda(lmbda),
                 self.dt,
-                self._scheme,
             ),
         )
 
     def Zetaw(self, lmbda):
-        return _Zeta(
+        return self.Zeta_eq(
             self.Zetaw_prev,
             self.Aw,
             self.cw,
             self.dLambda(lmbda),
             self.dt,
-            self._scheme,
         )
 
     @property
@@ -232,15 +193,14 @@ class LandModel(pulse.ActiveModel):
         self.Zetas_prev.vector()[:] = self._Zetas.vector()
         self.Zetaw_prev.vector()[:] = self._Zetaw.vector()
         self.lmbda_prev.vector()[:] = self.lmbda.vector()
-        # self.u_prev_prev.vector()[:] = self.u_prev.vector()
         self._t_prev = self.t
 
     def Ta(self, lmbda):
         logger.debug("Evaluate Ta")
         Tref = self._parameters["Tref"]
         rs = self._parameters["rs"]
-        scale_popu_Tref = 1.0  # self._parameters["scale_popu_Tref"]
-        scale_popu_rs = 1.0  # self._parameters["scale_popu_rs"]
+        scale_popu_Tref = 1.0
+        scale_popu_rs = 1.0
         Beta0 = self._parameters["Beta0"]
 
         _min = ufl.min_value
