@@ -40,7 +40,7 @@ class LandModel(pulse.ActiveModel):
         cai,
         mesh,
         CaTrpn=None,
-        TmB=None,  # Variables from CaTrpn split
+        TmB=None,
         XS=None,
         XW=None,
         parameters=None,
