@@ -14,10 +14,10 @@ from typing import Tuple
 
 dx = 0.5
 Lx = 0.5 # 20  # mm
-Ly = 1 #7  # mm
-Lz = 2  # mm
+Ly = 1.0 #7  # mm
+Lz = 2.0  # mm
 
-def setup_geometry(dx, Lx=Lx, Ly=Ly, Lz=Lz):
+def setup_geometry(dx: float, Lx: float = Lx, Ly: float =Ly, Lz:float =Lz) -> dolfin.Mesh:
     mesh = dolfin.BoxMesh(
         dolfin.MPI.comm_world,
         dolfin.Point(0.0, 0.0, 0.0),
