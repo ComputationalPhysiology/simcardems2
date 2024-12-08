@@ -6,7 +6,7 @@ Simcardems2 is the next version of [Simula Cardiac Electro-Mechanics Solver (sim
 To run simcardems2 in a Docker container, you can use the following [pre-built Docker image](https://github.com/scientificcomputing/packages/pkgs/container/fenics-gmsh) which has the necessary dependancies, including FEniCS:
 
 
-```console
+```shell
 docker pull ghcr.io/scientificcomputing/fenics-gmsh:2024-05-30
 ```
 
