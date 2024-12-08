@@ -4,7 +4,6 @@ Simcardems2 is the next version of [Simula Cardiac Electro-Mechanics Solver (sim
 
 ## Install with Docker
 Create a directory for simcardems and clone the github repository:
-to be shared with your Docker container:
 ```shell
 mkdir simcardems2_share
 cd simcardems2_share
