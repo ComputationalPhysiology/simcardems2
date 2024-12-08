@@ -22,7 +22,7 @@ Inside your simcardems2 directory, create a Docker container, here called "simca
 ```shell
 docker run --name simcardems2 -v "$(pwd)":/shared -w /shared -it ghcr.io/scientificcomputing/fenics-gmsh:2024-05-30
 ```
-The option -v mounts the current directory and its files to the new container. 
+The option -v mounts the current directory and its files to the new container.
 
 
 Inside the Docker container, enter the simcardems2 folder and install simcardems2:
