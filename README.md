@@ -28,6 +28,7 @@ The option -v mounts the current directory and its files to the new container.
 Inside the Docker container, enter the simcardems2 folder and install simcardems2:
 
 ```shell
+cd simcardems2/
 python3 -m pip install -e .
 ```
 
