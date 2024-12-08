@@ -16,7 +16,7 @@ To run `simcardems2` in a Docker container, you can use the following [pre-built
 docker pull ghcr.io/scientificcomputing/fenics-gmsh:2024-05-30
 ```
 
-Inside your `simcardems2` directory on your local computer, create a Docker container, here called "simcardems2", using the Docker image provided above:
+Inside your `simcardems2` directory on your local computer, create a Docker container, here called `simcardems2`, using the Docker image provided above:
 
 ```shell
 docker run --name simcardems2 -v "$(pwd)":/shared -w /shared -it ghcr.io/scientificcomputing/fenics-gmsh:2024-05-30
@@ -24,7 +24,7 @@ docker run --name simcardems2 -v "$(pwd)":/shared -w /shared -it ghcr.io/scienti
 The option -v mounts the current directory and its files to the new container.
 
 
-Inside the Docker container, enter the simcardems2 folder and install `simcardems2`:
+Inside the Docker container, enter the `simcardems2` folder and install `simcardems2`:
 
 ```shell
 cd simcardems2/
