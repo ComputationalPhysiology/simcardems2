@@ -24,8 +24,8 @@ docker run --name simcardems2 -v "$(pwd)":/shared -w /shared -it ghcr.io/scienti
 ```
 The option -v mounts the current directory and its files to the new container. 
 
-Install simcardems2:
-Inside the Docker container, enter the simcardems2 folder and install:
+
+Inside the Docker container, enter the simcardems2 folder and install simcardems2:
 
 ```shell
 python3 -m pip install -e .
