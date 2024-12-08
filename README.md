@@ -31,4 +31,3 @@ Inside the Docker container, enter the simcardems2 folder and install simcardems
 cd simcardems2/
 python3 -m pip install -e .
 ```
-
