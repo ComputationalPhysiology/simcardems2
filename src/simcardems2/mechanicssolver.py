@@ -2,7 +2,6 @@ import dolfin
 import pulse
 import logging
 import ufl_legacy as ufl
-from collections import deque
 from typing import Tuple
 
 logger = logging.getLogger(__name__)
@@ -30,42 +29,9 @@ class NonlinearProblem(dolfin.NonlinearProblem):
         self._F = F
 
         self.bcs = enlist(bcs)
-        self.output_matrix = output_matrix
-        self.output_matrix_path = output_matrix_path
-        self.verbose = True
-        self.n = 0
-
-    def F(self, b: dolfin.PETScVector, x: dolfin.PETScVector):
-        dolfin.assemble(self._F, tensor=b)
-        for bc in self.bcs:
-            bc.apply(b, x)
-
-    def J(self, A: dolfin.PETScMatrix, x: dolfin.PETScVector):
-        dolfin.assemble(self._J, tensor=A)
-        for bc in self.bcs:
-            bc.apply(A)
-
-
-class ContinuationProblem(NonlinearProblem):
-    def __init__(self, J, F, bcs, **kwargs):
-        # self.problem = problem
-        super().__init__(J, F, bcs, **kwargs)
-        self._J = J
-        self._F = F
-
-        self.bcs = enlist(bcs)
-
-        # super(ContinuationProblem, self).__init__()
-
-        self.fres = deque(maxlen=2)
-
-        self.first_call = True
-        self.skipF = False
-
         self._assemble_jacobian = True
 
     def form(self, A, P, b, x):
-        # pb = self.problem
         if self._assemble_jacobian:
             dolfin.assemble_system(self._J, self._F, self.bcs, A_tensor=A, b_tensor=b)
         else:
@@ -75,41 +41,11 @@ class ContinuationProblem(NonlinearProblem):
                     bc.apply(b)
         self._assemble_jacobian = not self._assemble_jacobian
 
-        return
-        # Timer("ContinuationSolver: form")
-        # pb = self.problem
-
-        # # check if we need to assemble the jacobian
-        # if self.first_call:
-        #     reset_jacobian = True
-        #     self.first_call = False
-        #     self.skipF = True
-        # else:
-        #     reset_jacobian = b.empty() and not A.empty()
-        #     self.skipF = reset_jacobian
-
-        #     if len(self.fres) == 2 and reset_jacobian:
-        #         if self.fres[1] < 0.1 * self.fres[0]:
-        #             debug("REUSE J")
-        #             reset_jacobian = False
-
-        # if reset_jacobian:
-        #     # requested J, assemble both
-        #     debug("ASSEMBLE J")
-        #     assemble_system(pb.dG, pb.G, pb.bcs, x0=x, A_tensor=A, b_tensor=b)
-
     def J(self, A, x):
         pass
 
     def F(self, b, x):
         return
-        # if self.skipF:
-        #     return
-        # pb = self.problem
-        # assemble(pb.G, tensor=b)
-        # for bc in pb.bcs:
-        #     bc.apply(b)
-        # self.fres.append(b.norm("l2"))
 
 
 class NewtonSolver(dolfin.NewtonSolver):
@@ -122,7 +58,7 @@ class NewtonSolver(dolfin.NewtonSolver):
         parameters=None,
     ):
         self.active = active
-        print(f"Initialize NewtonSolver with parameters: {parameters!r}")
+        logger.info(f"Initialize NewtonSolver with parameters: {parameters!r}")
         dolfin.PETScOptions.clear()
         self.dx = dolfin.Measure("dx", domain=state.function_space().mesh())
         self.volume = dolfin.assemble(dolfin.Constant(1) * self.dx)
@@ -142,9 +78,6 @@ class NewtonSolver(dolfin.NewtonSolver):
         )
 
         self._handle_parameters(parameters)
-        # self.dt_mech = 10.0
-        # self.t_mech = 0.0
-        # self.parameters["maximum_iterations"] = 50
 
     def _handle_parameters(self, parameters):
         # Setting default parameters
@@ -179,9 +112,6 @@ class NewtonSolver(dolfin.NewtonSolver):
         self._residuals = []
         self.parameters["convergence_criterion"] = "incremental"
         self.parameters["relaxation_parameter"] = 0.8
-
-    # def register_datacollector(self, datacollector):
-    #     self._datacollector = datacollector
 
     @staticmethod
     def default_solver_parameters():
@@ -221,18 +151,10 @@ class NewtonSolver(dolfin.NewtonSolver):
 
         # breakpoint()
         res = r.norm("l2")
-        print(f"Mechanics solver residual: {res}")
-        # if res > 0.1:
-        #     breakpoint()
-        # if i > 17:
-        #     breakpoint()
+        logger.info(f"Mechanics solver residual: {res}")
 
         if self.debug:
-            if not hasattr(self, "_datacollector"):
-                print("No datacollector registered with the NewtonSolver")
-
-            else:
-                self._residuals.append(res)
+            self._residuals.append(res)
 
         return super().converged(r, p, i)
 
@@ -247,12 +169,7 @@ class NewtonSolver(dolfin.NewtonSolver):
         self.t0 = t0
         self.dt = dt
 
-        # self.active.u_prev.assign(self._state.split(deepcopy=True)[0])
-        print(f"{self.active._t_prev = }, {self.active.t = }")
-        # self.active._t_prev = t0
-
-        # self.active.t = t0 + dt
-        print("Solving mechanics")
+        logger.info("Solving mechanics")
 
         self._solve_called = True
 
@@ -273,9 +190,6 @@ class NewtonSolver(dolfin.NewtonSolver):
         self.active._projector.project(self.active.Ta_current, self.active.Ta(lmbda))
         self.active.update_current(lmbda=lmbda)
         self.active.update_prev()
-
-        print("After: ", self._state.vector().get_local()[:10])
-
         if not conv:
             raise RuntimeError("Newton solver did not converge")
 
@@ -283,11 +197,8 @@ class NewtonSolver(dolfin.NewtonSolver):
 
         self._diff.axpy(1.0, self._state.vector())
         self._diff.axpy(-1.0, self._prev_state)
-        print(f"Difference between previous state : {self._diff.norm('l2')}")
-
         self._prev_state.zero()
         self._prev_state.axpy(1.0, self._state.vector())
-        print("Done solving mechanics")
 
         return (nit, conv)
 
@@ -301,7 +212,7 @@ class NewtonSolver(dolfin.NewtonSolver):
 
         # Update x from the dx obtained from linear solver (Newton iteration) :
         # x = -rp*dx (rp : relax param)
-        print(f"Updating mechanics solution with relax parameter {rp}, iteration {i}")
+        logger.debug(f"Updating mechanics solution with relax parameter {rp}, iteration {i}")
 
         super().update_solution(x, dx, rp, p, i)
 
@@ -359,11 +270,6 @@ class MechanicsProblem(pulse.MechanicsProblem):
             F=self._virtual_work,
             bcs=bcs,
         )
-        self._problem = ContinuationProblem(
-            J=self._jacobian,
-            F=self._virtual_work,
-            bcs=bcs,
-        )
 
         self.solver = NewtonSolver(
             problem=self._problem,
@@ -374,77 +280,3 @@ class MechanicsProblem(pulse.MechanicsProblem):
     def solve(self, t0: float, dt: float):
         self._init_forms()
         return self.solver.solve(t0, dt)
-
-
-class Problem:
-    def __init__(self, geometry, material_pre, material_post, bcs) -> None:
-        self.pre = MechanicsProblem(geometry, material_pre, bcs)
-        self.post = pulse.MechanicsProblem(geometry, material_post, bcs)
-        self.post.solve()
-
-    def solve(self, t0: float, dt: float):
-        self.pre.solve(t0, dt)
-        # breakpoint()
-        self.post.state.vector()[:] = self.pre.state.vector()
-        self.post.solve()
-        u, p = self.post.state.split(deepcopy=True)
-        # self.active.u.interpolate(u)
-        # print(u.vector().get_local().min(), u.vector().get_local().max())
-        F = ufl.grad(u) + ufl.Identity(3)
-
-        f = F * self.pre.solver.active.f0
-        lmbda = dolfin.sqrt(f**2)
-        self.pre.solver.active._projector.project(self.pre.solver.active.lmbda, lmbda)
-        # self.pre.solver.active.update_Zetas(lmbda=lmbda)
-        # self.pre.solver.active.update_Zetaw(lmbda=lmbda)
-        # breakpoint()
-
-    @property
-    def state(self):
-        return self.post.state
-
-
-class CompressibleMechanicsProblem(MechanicsProblem):
-    def _init_spaces(self):
-        mesh = self.geometry.mesh
-
-        element = dolfin.VectorElement("P", mesh.ufl_cell(), 2)
-        self.state_space = dolfin.FunctionSpace(mesh, element)
-        self.state = dolfin.Function(self.state_space)
-        self.state_test = dolfin.TestFunction(self.state_space)
-
-        # Add penalty factor
-        self.kappa = dolfin.Constant(0.01)
-
-    def compressible_energy(self, F):
-        J = ufl.det(F)
-        return self.kappa * (J * ufl.ln(J) - J + 1)
-
-    def _init_forms(self):
-        u = self.state
-        v = self.state_test
-
-        F = dolfin.variable(pulse.kinematics.DeformationGradient(u))
-
-        dx = self.geometry.dx
-
-        # Add penalty term
-        internal_energy = self.material.strain_energy(F) + self.compressible_energy(F)
-
-        self._virtual_work = dolfin.derivative(
-            internal_energy * dx,
-            self.state,
-            self.state_test,
-        )
-
-        external_work = self._external_work(u, v)
-        if external_work is not None:
-            self._virtual_work += external_work
-
-        self._set_dirichlet_bc()
-        self._jacobian = dolfin.derivative(
-            self._virtual_work,
-            self.state,
-            dolfin.TrialFunction(self.state_space),
-        )
-        self._init_solver()

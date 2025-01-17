@@ -1,19 +1,14 @@
 import logging
 import gotranx
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Sequence
 import numpy as np
 import dolfin
 import pulse
 import beat
-import configparser
-import sympy
-import os
 import argparse
 import toml
-import ufl_legacy as ufl
 import matplotlib.pyplot as plt
-import copy
 
 
 from simcardems2 import utils
@@ -21,7 +16,6 @@ from simcardems2 import mechanicssolver
 from simcardems2 import interpolation
 from land_CaTrpnsplit_consistent_with_zetasplit import LandModel
 from simcardems2.validate_input_types import validate_input_types
-
 
 
 try:
@@ -62,30 +56,25 @@ stim_region = (
     [config["stim"]["zmin"], config["stim"]["zmax"]],
 )
 out_ep_var_names = [
-    config["write_all_ep"][f"{i}"]["name"]
-    for i in range(config["write_all_ep"]["numbers"])
+    config["write_all_ep"][f"{i}"]["name"] for i in range(config["write_all_ep"]["numbers"])
 ]
 out_mech_var_names = [
-    config["write_all_mech"][f"{i}"]["name"]
-    for i in range(config["write_all_mech"]["numbers"])
+    config["write_all_mech"][f"{i}"]["name"] for i in range(config["write_all_mech"]["numbers"])
 ]
 out_ep_coord_names = [
-    config["write_point_ep"][f"{i}"]["name"]
-    for i in range(config["write_point_ep"]["numbers"])
+    config["write_point_ep"][f"{i}"]["name"] for i in range(config["write_point_ep"]["numbers"])
 ]
 ep_coords = [
     [config["write_point_ep"][f"{varnr}"][f"{coord}"] for coord in ["x", "y", "z"]]
     for varnr in range(config["write_point_ep"]["numbers"])
 ]
 out_mech_coord_names = [
-    config["write_point_mech"][f"{i}"]["name"]
-    for i in range(config["write_point_mech"]["numbers"])
+    config["write_point_mech"][f"{i}"]["name"] for i in range(config["write_point_mech"]["numbers"])
 ]
 mech_coords = [
     [config["write_point_mech"][f"{varnr}"][f"{coord}"] for coord in ["x", "y", "z"]]
     for varnr in range(config["write_point_mech"]["numbers"])
 ]
-
 
 
 outdir = Path(config["sim"]["outdir"])
@@ -288,7 +277,7 @@ y_ep_ = ep_model["init_state_values"]()
 p_ep_ = ep_model["init_parameter_values"](amp=0.0)
 
 
-#ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+# ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
 ep_mesh = mesh  # TEST: For when checking consistency across splits
 
 time = dolfin.Constant(0.0)
@@ -310,12 +299,11 @@ num_points_ep = v_ode.vector().local_size()
 lmbda = dolfin.Function(ep_ode_space)
 
 
-
 y_ep = np.zeros((len(y_ep_), num_points_ep))
-y_ep.T[:] = y_ep_ # Set to y_ep with initial values defined in ep_model
+y_ep.T[:] = y_ep_  # Set to y_ep with initial values defined in ep_model
 
 
-#mechanics_missing_values_ = np.zeros(1)
+# mechanics_missing_values_ = np.zeros(1)
 mechanics_missing_values_ = np.array([0.0001])
 
 
@@ -334,8 +322,7 @@ missing_mech = interpolation.MissingValue(
 
 missing_mech.values_ep.T[:] = mechanics_missing_values_
 missing_mech.values_mechanics.T[:] = mechanics_missing_values_
-missing_mech.mechanics_values_to_function() # Assign initial values to mech functions
-
+missing_mech.mechanics_values_to_function()  # Assign initial values to mech functions
 
 
 # Use previous Catrpn in mech to be consistent with zeta split
@@ -350,15 +337,13 @@ for i in range(len(mechanics_missing_values_)):
     prev_missing_mech.u_mechanics[i].vector().set_local(missing_mech.values_mechanics[i])
 
 
-
-
 # Create function spaces for ep variables to output
 out_ep_funcs = {}
 for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
     out_ep_funcs[out_ep_var] = dolfin.Function(ep_ode_space)
 
 p_ep = np.zeros((len(p_ep_), num_points_ep))
-p_ep.T[:] = p_ep_ # Initialise p_ep with initial values defined in ep_model
+p_ep.T[:] = p_ep_  # Initialise p_ep with initial values defined in ep_model
 
 pde = beat.MonodomainModel(time=time, mesh=ep_mesh, M=M, I_s=I_s, params=params)
 ode = beat.odesolver.DolfinODESolver(
@@ -373,7 +358,7 @@ ode = beat.odesolver.DolfinODESolver(
     num_missing_variables=0,
 )
 
-#ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
+# ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
 ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1)
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
@@ -429,12 +414,14 @@ active_model = LandModel(
     f0=f0,
     s0=s0,
     n0=n0,
-    #CaTrpn=missing_mech.u_mechanics[0],
-    CaTrpn=prev_missing_mech.u_mechanics[0],  # Use prev Catrpn in mech to be consistent with zeta split
+    # CaTrpn=missing_mech.u_mechanics[0],
+    CaTrpn=prev_missing_mech.u_mechanics[
+        0
+    ],  # Use prev Catrpn in mech to be consistent with zeta split
     mesh=mesh,
-    eta=0, #Fraction of transverse active tension for active stress formulation.
-        #0 = active only along fiber, 1 = equal forces in all directions
-        #(default=0.0).
+    eta=0,  # Fraction of transverse active tension for active stress formulation.
+    # 0 = active only along fiber, 1 = equal forces in all directions
+    # (default=0.0).
     dLambda_tol=1e-12,
 )
 active_model.t = 0.0
@@ -445,8 +432,8 @@ mech_variables = {
     "Zetas": active_model._Zetas,
     "Zetaw": active_model._Zetaw,
     "lambda": active_model.lmbda,
-    "XS":active_model._XS,
-    "XW":active_model._XW,
+    "XS": active_model._XS,
+    "XW": active_model._XW,
     "TmB": active_model._TmB,
 }
 
@@ -522,7 +509,7 @@ timer = dolfin.Timer("solve_loop")
 
 for i, ti in enumerate(t):
     print(f"Solving time {ti:.2f} ms")
-    t_bcs.assign(ti) # Use ti+ dt here instead?
+    t_bcs.assign(ti)  # Use ti+ dt here instead?
     ep_solver.step((ti, ti + config["sim"]["dt"]))
 
     # Assign values to ep function
@@ -533,25 +520,20 @@ for i, ti in enumerate(t):
     for var_nr in range(config["write_point_ep"]["numbers"]):
         # Trace variable in coordinate
         out_ep_var = config["write_point_ep"][f"{var_nr}"]["name"]
-        out_ep_example_nodes[out_ep_var][i] = out_ep_funcs[out_ep_var](
-            ep_coords[var_nr]
-        )
+        out_ep_example_nodes[out_ep_var][i] = out_ep_funcs[out_ep_var](ep_coords[var_nr])
         # Compute volume averages
-        out_ep_volume_average_timeseries[out_ep_var][
-            i
-        ] = compute_function_average_over_mesh(out_ep_funcs[out_ep_var], ep_mesh)
+        out_ep_volume_average_timeseries[out_ep_var][i] = compute_function_average_over_mesh(
+            out_ep_funcs[out_ep_var], ep_mesh
+        )
 
     if i % config["sim"]["N"] != 0:
         continue
 
     # Extract missing values for the mechanics step from the ep model (ep function space)
-    missing_ep_values = mv_ep(
-        ti + config["sim"]["dt"], ode._values, ode.parameters
-    )
+    missing_ep_values = mv_ep(ti + config["sim"]["dt"], ode._values, ode.parameters)
     # Assign the extracted values as missing_mech for the mech step (ep function space)
     for k in range(missing_mech.num_values):
         missing_mech.u_ep_int[k].vector()[:] = missing_ep_values[k, :]
-
 
     # Interpolate missing variables from ep to mech function space
     missing_mech.interpolate_ep_to_mechanics()
@@ -559,14 +541,13 @@ for i, ti in enumerate(t):
     inds.append(i)
 
     print("Solve mechanics")
-    active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
+    active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"]  # Addition!
     problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
     active_model.update_prev()
 
-
     lmbda.interpolate(active_model.lmbda)
 
-    p_ep[lmbda_index_ep, :] = lmbda.vector().get_local() # p_ep are the ep parameters
+    p_ep[lmbda_index_ep, :] = lmbda.vector().get_local()  # p_ep are the ep parameters
     print(
         active_model.lmbda.vector().get_local().min(),
         active_model.lmbda.vector().get_local().max(),
@@ -574,25 +555,20 @@ for i, ti in enumerate(t):
 
     U, p = problem.state.split(deepcopy=True)
 
-
     for var_nr in range(config["write_point_mech"]["numbers"]):
         # Trace variable in coordinate
         out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
 
-        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
-            mech_coords[var_nr]
-        )
+        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](mech_coords[var_nr])
 
         # Compute volume averages
-        out_mech_volume_average_timeseries[out_mech_var][
-            i
-        ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
-
+        out_mech_volume_average_timeseries[out_mech_var][i] = compute_function_average_over_mesh(
+            mech_variables[out_mech_var], mesh
+        )
 
     # Use previous Catrpn in mech to be consistent with zeta split
     for i in range(len(mechanics_missing_values_)):
         prev_missing_mech.u_mechanics[i].vector().set_local(missing_mech.values_mechanics[i])
-
 
     with dolfin.XDMFFile(disp_file.as_posix()) as file:
         file.write_checkpoint(U, "disp", j, dolfin.XDMFFile.Encoding.HDF5, True)
@@ -637,12 +613,26 @@ for out_mech_var in out_mech_coord_names:
 # Write point traces for later analysis
 for var_nr in range(config["write_point_ep"]["numbers"]):
     out_ep_var = config["write_point_ep"][f"{var_nr}"]["name"]
-    with open(Path(outdir / f"{out_ep_var}_ep_coord{ep_coords[var_nr][0]},{ep_coords[var_nr][1]},{ep_coords[var_nr][2]}.txt".replace(" ", "")), "w") as f:
-         np.savetxt(f, out_ep_example_nodes[out_ep_var][inds])
+    with open(
+        Path(
+            outdir
+            / f"{out_ep_var}_ep_coord{ep_coords[var_nr][0]},{ep_coords[var_nr][1]},{ep_coords[var_nr][2]}.txt".replace(
+                " ", ""
+            )
+        ),
+        "w",
+    ) as f:
+        np.savetxt(f, out_ep_example_nodes[out_ep_var][inds])
 
 for var_nr in range(config["write_point_mech"]["numbers"]):
     out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
-    with open(Path(outdir / f"{out_mech_var}_mech_coord{mech_coords[var_nr][0]},{mech_coords[var_nr][1]},{mech_coords[var_nr][2]}.txt"), "w") as f:
+    with open(
+        Path(
+            outdir
+            / f"{out_mech_var}_mech_coord{mech_coords[var_nr][0]},{mech_coords[var_nr][1]},{mech_coords[var_nr][2]}.txt"
+        ),
+        "w",
+    ) as f:
         np.savetxt(f, out_mech_example_nodes[out_mech_var][inds])
 
 print(f"Solved on {100 * len(inds) / len(t)}% of the time steps")

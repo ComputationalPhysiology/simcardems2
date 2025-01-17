@@ -1,11 +1,9 @@
-"""Same as 0D but with varying lambda
-"""
+"""Same as 0D but with varying lambda"""
+
 from pathlib import Path
 import gotranx
-from typing import Any
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
 
 
 def twitch(t, tstart=0.05, ca_ampl=-0.2):
@@ -14,16 +12,13 @@ def twitch(t, tstart=0.05, ca_ampl=-0.2):
 
     ca_diast = 0.0
 
-    beta = (tau1 / tau2) ** (-1 / (tau1 / tau2 - 1)) - (tau1 / tau2) ** (
-        -1 / (1 - tau2 / tau1)
-    )
+    beta = (tau1 / tau2) ** (-1 / (tau1 / tau2 - 1)) - (tau1 / tau2) ** (-1 / (1 - tau2 / tau1))
     ca = np.zeros_like(t)
 
     ca[t <= tstart] = ca_diast
 
     ca[t > tstart] = (ca_ampl - ca_diast) / beta * (
-        np.exp(-(t[t > tstart] - tstart) / tau1)
-        - np.exp(-(t[t > tstart] - tstart) / tau2)
+        np.exp(-(t[t > tstart] - tstart) / tau1) - np.exp(-(t[t > tstart] - tstart) / tau2)
     ) + ca_diast
     return ca + 1.0
 
@@ -38,11 +33,9 @@ ep_ode = ode - mechanics_comp
 ep_file = Path("ORdmm_Land_ep.py")
 
 
-
 # Generate model code from .ode file
 rebuild = False
 if not ep_file.is_file() or rebuild:
-
     # Generate code for full model. The full model output is plotted together with the splitting
     code = gotranx.cli.gotran2py.get_code(
         ode,
@@ -156,7 +149,6 @@ colors = cycle(["r", "g", "b", "c", "m"])
 linestyles = cycle(["-", "--", "-.", ":"])
 
 
-
 # Create arrays to store the results
 V_ep = np.zeros(len(t))
 Ca_ep = np.zeros(len(t))
@@ -195,27 +187,25 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     # Get initial values from the mechanics model
     y_mechanics = mechanics_model["init_state_values"]()
     p_mechanics = mechanics_model["init_parameter_values"]()
-    #mechanics_missing_values = np.zeros(len(mechanics_ode.missing_variables))
-    mechanics_missing_values = np.array([0.0001])  # For cai split, missing variable is cai. Set the initial value instead of setting to zero
+    # mechanics_missing_values = np.zeros(len(mechanics_ode.missing_variables))
+    mechanics_missing_values = np.array(
+        [0.0001]
+    )  # For cai split, missing variable is cai. Set the initial value instead of setting to zero
 
     # Get the initial values from the full model
     y = model["init_state_values"]()
     p = model["init_parameter_values"]()
-
 
     # Get the default values of the missing values
     # A little bit chicken and egg problem here, but in this specific case we know that
     # the mechanics_missing_values is only the calcium concentration, which is a state variable
     # and this doesn't require any additional information to be calculated.
     mechanics_missing_values[:] = mv_ep(0, y_ep, p_ep, ep_missing_values)
-    ep_missing_values[:] = mv_mechanics(
-        0, y_mechanics, p_mechanics, mechanics_missing_values
-    )
+    ep_missing_values[:] = mv_mechanics(0, y_mechanics, p_mechanics, mechanics_missing_values)
 
     # We will store the previous missing values to check for convergence and use for updating
     prev_mechanics_missing_values = np.zeros_like(mechanics_missing_values)
     prev_mechanics_missing_values[:] = mechanics_missing_values
-
 
     inds = []
     count = 1
@@ -223,7 +213,6 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     prev_lmbda = p[lmbda_index]
     prev_ti = 0
     for i, ti in enumerate(t):
-
         # Set initial lambda
         if ti == 0:
             lmbda_ti = twitch(ti)
@@ -232,7 +221,6 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
             dLambda = 0
             p[dLambda_index] = dLambda
             p_mechanics[dLambda_index_mechanics] = dLambda
-
 
         # Forward step for the full model
         y[:] = fgr(y, ti, dt, p)
@@ -248,16 +236,16 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         dLambda_full[i] = p[dLambda_index]
         lmbda_full[i] = p[lmbda_index]
 
-
-
         # Forward step for the EP model
         y_ep[:] = fgr_ep(y_ep, ti, dt, p_ep, ep_missing_values)
         V_ep[i] = y_ep[V_index_ep]
         Ca_ep[i] = y_ep[Ca_index_ep]
-        #monitor_ep = mon_ep(ti, y_ep, p_ep, ep_missing_values) #not currently used
+        # monitor_ep = mon_ep(ti, y_ep, p_ep, ep_missing_values) #not currently used
 
         # Update missing values for the mechanics model
-        mechanics_missing_values[:] = mv_ep(t, y_ep, p_ep, ep_missing_values) # this function just outputs the value of cai straight from y_ep (does not calculate anything)
+        mechanics_missing_values[:] = mv_ep(
+            t, y_ep, p_ep, ep_missing_values
+        )  # this function just outputs the value of cai straight from y_ep (does not calculate anything)
 
         # Compute the change in the missing values
         change = np.linalg.norm(
@@ -270,29 +258,26 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
             # Very small change to just continue to next time step
             if count < max_count:
                 # Lambda still needs to be updated:
-                lmbda_ti = twitch(ti+dt)
+                lmbda_ti = twitch(ti + dt)
                 p[lmbda_index] = lmbda_ti
                 p_mechanics[lmbda_index_mechanics] = lmbda_ti
-                dLambda = (lmbda_ti - prev_lmbda)/dt
+                dLambda = (lmbda_ti - prev_lmbda) / dt
                 p[dLambda_index] = dLambda
                 p_mechanics[dLambda_index_mechanics] = dLambda
                 prev_ti = ti
                 prev_lmbda = lmbda_ti
                 continue
 
-
         # Store the index of the time step where we performed a step
         inds.append(i)
 
-
         # Forward step for the mechanics model
-        #y_mechanics[:] = fgr_mechanics(
+        # y_mechanics[:] = fgr_mechanics(
         #    y_mechanics, ti, count * dt, p_mechanics, mechanics_missing_values
-        #)
+        # )
         y_mechanics[:] = fgr_mechanics(
             y_mechanics, ti, count * dt, p_mechanics, prev_mechanics_missing_values
         )
-
 
         count = 1
         monitor_mechanics = mon_mechanics(
@@ -311,26 +296,21 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         CaTrpn_mechanics[i] = y_mechanics[CaTrpn_index_mechanics]
         TmB_mechanics[i] = y_mechanics[TmB_index_mechanics]
 
-
-
         # Update lambda
         # Should be done after all calculations except ep_missing, which is used for next ep step
-        lmbda_ti = twitch(ti+dt)
+        lmbda_ti = twitch(ti + dt)
         p[lmbda_index] = lmbda_ti
         p_mechanics[lmbda_index_mechanics] = lmbda_ti
-        dLambda = (lmbda_ti - prev_lmbda)/dt
+        dLambda = (lmbda_ti - prev_lmbda) / dt
         p[dLambda_index] = dLambda
         p_mechanics[dLambda_index_mechanics] = dLambda
         prev_ti = ti
         prev_lmbda = lmbda_ti
 
         # Update missing values for the EP model # J_TRPN for cai split
-        ep_missing_values[:] = mv_mechanics(
-            t, y_mechanics, p_mechanics, mechanics_missing_values
-        )
+        ep_missing_values[:] = mv_mechanics(t, y_mechanics, p_mechanics, mechanics_missing_values)
 
         prev_mechanics_missing_values[:] = mechanics_missing_values
-
 
     # Plot the results
     perc = 100 * len(inds) / len(t)
@@ -363,15 +343,13 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     ax[0, 0].set_ylabel("V (mV)")
     ax[0, 1].set_ylabel("Ca (mM)")
 
-
     ax[1, 0].plot(
         t[inds],
         lmbda_mechanics[inds],
         color=col,
         linestyle=ls,  # label=f"tol={tol}"
-        #marker='.'
+        # marker='.'
     )
-
 
     ax[1, 1].plot(
         t[inds],
@@ -382,9 +360,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     ax[1, 0].set_ylabel("Lambda \n mech")
     ax[1, 1].set_ylabel("dLambda \n mech")
 
-    err_Ta = np.linalg.norm(Ta_full[inds] - Ta_mechanics[inds]) / np.linalg.norm(
-        Ta_mechanics
-    )
+    err_Ta = np.linalg.norm(Ta_full[inds] - Ta_mechanics[inds]) / np.linalg.norm(Ta_mechanics)
 
     ax[2, 0].plot(
         t[inds],
@@ -394,10 +370,9 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     )
     ax[2, 0].set_ylabel("J TRPN \n mech")
 
-
     ax[2, 1].plot(
         t[inds],
-        np.around(J_TRPN_full[inds] - J_TRPN_mechanics[inds], 16), # round to float precision
+        np.around(J_TRPN_full[inds] - J_TRPN_mechanics[inds], 16),  # round to float precision
         # label=f"err={err_J_TRPN:.2e}, tol={tol}",
         color=col,
         linestyle=ls,
@@ -409,16 +384,16 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
         CaTrpn_mechanics[inds],
         color=col,
         linestyle=ls,  # label=f"tol={tol}"
-        #marker='.'
+        # marker='.'
     )
 
     ax[3, 1].plot(
         t[inds],
-        np.around(CaTrpn_full[inds] - CaTrpn_mechanics[inds], 16), # round to float precision
+        np.around(CaTrpn_full[inds] - CaTrpn_mechanics[inds], 16),  # round to float precision
         # label=f"err={err_J_TRPN:.2e}, tol={tol}",
         color=col,
         linestyle=ls,
-        #marker='.'
+        # marker='.'
     )
     ax[3, 0].set_ylabel("CaTrpn \n mech")
     ax[3, 1].set_ylabel("CaTrpn \n mech error")
@@ -431,18 +406,14 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     )
     ax[4, 0].set_ylabel("TmB mech")
 
-
     ax[4, 1].plot(
         t[inds],
-        np.around(TmB_full[inds] - TmB_mechanics[inds], 16), # round to float precision
+        np.around(TmB_full[inds] - TmB_mechanics[inds], 16),  # round to float precision
         # label=f"err={err_J_TRPN:.2e}, tol={tol}",
         color=col,
         linestyle=ls,
     )
     ax[4, 1].set_ylabel("TmB \n mech error")
-
-
-
 
     ax[5, 0].plot(
         t[inds],
@@ -452,19 +423,13 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     )
     ax[5, 1].plot(
         t[inds],
-        np.around(XU_full[inds] - XU_mechanics[inds], 16), # round to float precision
+        np.around(XU_full[inds] - XU_mechanics[inds], 16),  # round to float precision
         # label=f"err={err_J_TRPN:.2e}, tol={tol}",
         color=col,
         linestyle=ls,
     )
     ax[5, 0].set_ylabel("XU mech")
     ax[5, 1].set_ylabel("XU \n mech error")
-
-
-
-
-
-
 
     ax[6, 0].plot(
         t[inds],
@@ -474,7 +439,7 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
     )
     ax[6, 1].plot(
         t[inds],
-        np.around(XS_full[inds] - XS_mechanics[inds], 16), # round to float precision
+        np.around(XS_full[inds] - XS_mechanics[inds], 16),  # round to float precision
         # label=f"err={err_J_TRPN:.2e}, tol={tol}",
         color=col,
         linestyle=ls,
@@ -491,12 +456,11 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
 
     ax[7, 1].plot(
         t[inds],
-        np.around(Zetas_full[inds] - Zetas_mechanics[inds], 16), # round to float precision
+        np.around(Zetas_full[inds] - Zetas_mechanics[inds], 16),  # round to float precision
         # label=f"err={err_J_TRPN:.2e}, tol={tol}",
         color=col,
         linestyle=ls,
     )
-
 
     ax[7, 0].set_ylabel("Zetas mech")
     ax[7, 1].set_ylabel("Zetas\n mech error")
@@ -511,14 +475,12 @@ for j, (col, ls, tol) in enumerate(zip(colors, linestyles, tols)):
 
     ax[8, 1].plot(
         t[inds],
-        np.around(Ta_full[inds] - Ta_mechanics[inds], 16), # round to float precision
+        np.around(Ta_full[inds] - Ta_mechanics[inds], 16),  # round to float precision
         # label=f"tol={tol}, perc={perc}%",
         color=col,
         linestyle=ls,
     )
     ax[8, 1].set_ylabel("Ta error (kPa)")
-
-
 
     ax[8, 0].set_xlabel("Time (ms)")
     ax[8, 1].set_xlabel("Time (ms)")

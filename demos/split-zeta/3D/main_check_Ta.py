@@ -3,7 +3,6 @@ import ufl_legacy as ufl
 import pulse
 import numpy as np
 import matplotlib.pyplot as plt
-import xml.etree.ElementTree as ET
 
 
 # def load_timesteps_from_xdmf(xdmffile):
@@ -19,16 +18,13 @@ import xml.etree.ElementTree as ET
 
 
 mesh = dolfin.Mesh()
-with dolfin.XDMFFile(f'mesh_mech_0.5dx_0.5Lx_1Ly_2Lz.xdmf') as infile:
+with dolfin.XDMFFile("mesh_mech_0.5dx_0.5Lx_1Ly_2Lz.xdmf") as infile:
     infile.read(mesh)
 
 
-
 ffun_bcs = dolfin.MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
-with dolfin.XDMFFile(f'mesh_mech_0.5dx_0.5Lx_1Ly_2Lz_surface_ffun.xdmf') as infile:
+with dolfin.XDMFFile("mesh_mech_0.5dx_0.5Lx_1Ly_2Lz_surface_ffun.xdmf") as infile:
     infile.read(ffun_bcs)
-
-
 
 
 material_parameters = dict(
@@ -46,7 +42,6 @@ material_parameters = dict(
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
-
 
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
@@ -75,11 +70,10 @@ def create_boundary_conditions(
             )
         return bcs
 
-
-
     # Collect Boundary Conditions
     bcs = pulse.BoundaryConditions(dirichlet=(dirichlet_bc,))
     return bcs
+
 
 f0 = dolfin.as_vector([1.0, 0.0, 0.0])
 s0 = dolfin.as_vector([0.0, 1.0, 0.0])
@@ -163,8 +157,6 @@ for k, N in enumerate([1, 400]):
         dlmbda.assign(lmbda - lmbda_prev)
         lmbda_prev.vector()[:] = lmbda.vector()[:]
 
-
-
         F_U = ufl.grad(U) + ufl.Identity(3)
         lmda_expr_U = ufl.sqrt(ufl.inner(F_U * f0, F_U * f0))
         lmbda_U.assign(dolfin.project(lmda_expr_U, W))
@@ -185,8 +177,6 @@ for k, N in enumerate([1, 400]):
         # Ux.append(U.vector().get_local()[0::3])
         # Uy.append(U.vector().get_local()[1::3])
         # Uz.append(U.vector().get_local()[2::3])
-
-
 
         Tas.append(Ta.vector().get_local())
         lmbdas.append(lmbda.vector().get_local())
@@ -212,11 +202,6 @@ for k, N in enumerate([1, 400]):
     ax_u[2, k].plot(uz, label="computed")
     ax_u[2, k].plot(Uz, label="saved")
 
-
-
-
-
-
     fig, ax = plt.subplots(2, 2, sharex=True)
     ax[0, 0].plot(Tas[:, ::4])
     ax[0, 0].set_title("Ta")
@@ -232,7 +217,6 @@ for k, N in enumerate([1, 400]):
     for axi in ax.flatten():
         axi.grid()
     fig.savefig(f"check_Ta/N{N}/Ta_points.png")
-
 
     ax_mean[0].plot(Ta_mean, label=f"N={N}")
     ax_mean[1].plot(lmbda_mean, label=f"N={N}")

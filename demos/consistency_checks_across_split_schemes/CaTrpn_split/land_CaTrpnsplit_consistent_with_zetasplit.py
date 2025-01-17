@@ -26,55 +26,52 @@ def _Zeta(Zeta_prev, A, c, dLambda, dt, scheme: Scheme):
         # Forward euler
         return Zeta_prev + dZetas_dt * dt
 
+
 # For CaTrpn split
 def _XS(XS_prev, XW, gammasu, ksu, kws, dt):
     dXS_dt_linearized = -gammasu - ksu
     dXS_dt = -XS_prev * gammasu - XS_prev * ksu + XW * kws
     return XS_prev + np.where(
-        (np.abs(dXS_dt_linearized)> 1e-8),
-        dXS_dt * (np.exp(dXS_dt_linearized*dt) - 1) / dXS_dt_linearized,
-        dXS_dt * dt
-        )
+        (np.abs(dXS_dt_linearized) > 1e-8),
+        dXS_dt * (np.exp(dXS_dt_linearized * dt) - 1) / dXS_dt_linearized,
+        dXS_dt * dt,
+    )
+
 
 def _XW(XW_prev, XU, gammawu, kws, kuw, kwu, dt):
     dXW_dt_linearized = -gammawu - kws - kwu
     dXW_dt = -XW_prev * gammawu - XW_prev * kws + XU * kuw - XW_prev * kwu
     return XW_prev + np.where(
-        (np.abs(dXW_dt_linearized)> 1e-8),
-        dXW_dt * (np.exp(dXW_dt_linearized*dt) - 1) / dXW_dt_linearized,
-        dXW_dt * dt
-        )
+        (np.abs(dXW_dt_linearized) > 1e-8),
+        dXW_dt * (np.exp(dXW_dt_linearized * dt) - 1) / dXW_dt_linearized,
+        dXW_dt * dt,
+    )
+
 
 def _TmB(TmB_prev, CaTrpn, XU, ntm, kb, ku, dt):
     dTmB_dt_linearized = -(CaTrpn ** (ntm / 2)) * ku
     dTmB_dt = -TmB_prev * CaTrpn ** (ntm / 2) * ku + XU * (
-        kb * np.where(
-            (CaTrpn ** (-1 / 2 * ntm)<100),
-            CaTrpn ** (-1 / 2 * ntm),
-            100
-            )
-        )
+        kb * np.where((CaTrpn ** (-1 / 2 * ntm) < 100), CaTrpn ** (-1 / 2 * ntm), 100)
+    )
 
     return TmB_prev + np.where(
-        (np.abs(dTmB_dt_linearized)> 1e-8),
+        (np.abs(dTmB_dt_linearized) > 1e-8),
         dTmB_dt * (np.exp(dTmB_dt_linearized * dt) - 1) / dTmB_dt_linearized,
-        dTmB_dt * dt
-        )
+        dTmB_dt * dt,
+    )
+
 
 def _XU(XW, XS, TmB):
-    return -XW -XS + 1 - TmB
+    return -XW - XS + 1 - TmB
+
 
 def _gammawu(Zetaw, gammaw):
     return gammaw * np.abs(Zetaw)
 
 
 def _gammasu(Zetas, gammas):
-    return gammas * np.where(
-        (Zetas > 0),
-        Zetas,
-        np.where((Zetas < -1),
-        -Zetas - 1, 0)
-        )
+    return gammas * np.where((Zetas > 0), Zetas, np.where((Zetas < -1), -Zetas - 1, 0))
+
 
 _parameters = {
     "Beta0": 2.3,
@@ -87,9 +84,9 @@ _parameters = {
     "rw": 0.5,
     "gammas": 0.0085,  # New parameters CaTrpn split
     "gammaw": 0.615,  # New parameters CaTrpn split
-    "Trpn50": 0.35,   # New parameters CaTrpn split
-    "ntm": 2.4, # New parameters CaTrpn split.
-    "ku": 0.04, # New parameters CaTrpn split.
+    "Trpn50": 0.35,  # New parameters CaTrpn split
+    "ntm": 2.4,  # New parameters CaTrpn split.
+    "ku": 0.04,  # New parameters CaTrpn split.
 }
 
 
@@ -101,7 +98,7 @@ class LandModel(pulse.ActiveModel):
         n0,
         CaTrpn,  # New variables CaTrpn split (missing)
         mesh,
-        TmB=None, # New variables CaTrpn split
+        TmB=None,  # New variables CaTrpn split
         XS=None,
         XW=None,
         parameters=None,
@@ -140,7 +137,7 @@ class LandModel(pulse.ActiveModel):
         self.TmB_prev = dolfin.Function(self.function_space)
         if TmB is not None:
             self.TmB_prev.assign(TmB)
-        else: # Set initial TmB value
+        else:  # Set initial TmB value
             self._TmB.interpolate(dolfin.Constant(1))
             self.TmB_prev.interpolate(dolfin.Constant(1))
         """ """
@@ -173,21 +170,21 @@ class LandModel(pulse.ActiveModel):
         self._dLambda_tol = dLambda_tol
         self._t_prev = 0.0
 
-
     """ For CaTrpn split"""
+
     @property
     def ksu(self):
         kws = self._parameters["kws"]
         rw = self._parameters["rw"]
         rs = self._parameters["rs"]
-        return ((kws * rw) * (-1 + 1 / rs))
+        return (kws * rw) * (-1 + 1 / rs)
 
     @property
     def kwu(self):
         kuw = self._parameters["kuw"]
         rw = self._parameters["rw"]
         kws = self._parameters["kws"]
-        return (kuw * (-1 + 1 / rw) - kws)
+        return kuw * (-1 + 1 / rw) - kws
 
     @property
     def kb(self):
@@ -196,7 +193,7 @@ class LandModel(pulse.ActiveModel):
         ku = self._parameters["ku"]
         rs = self._parameters["rs"]
         rw = self._parameters["rw"]
-        return ((Trpn50**ntm * ku) / (-rw * (1 - rs) + 1 - rs))
+        return (Trpn50**ntm * ku) / (-rw * (1 - rs) + 1 - rs)
 
     @property
     def XS(self):
@@ -231,8 +228,8 @@ class LandModel(pulse.ActiveModel):
             self._parameters["ntm"],
             self.kb,
             self._parameters["ku"],
-            self.dt
-            )
+            self.dt,
+        )
 
     def update_XS(self):
         logger.debug("update XS")
@@ -242,8 +239,8 @@ class LandModel(pulse.ActiveModel):
             self.gammasu.vector().get_local(),
             self.ksu,
             self._parameters["kws"],
-            self.dt
-            )
+            self.dt,
+        )
 
     def update_XW(self):
         logger.debug("update XW")
@@ -254,8 +251,8 @@ class LandModel(pulse.ActiveModel):
             self._parameters["kws"],
             self._parameters["kuw"],
             self.kwu,
-            self.dt
-            )
+            self.dt,
+        )
 
     # Calculate monitors
     def calculate_XU(self):
@@ -264,28 +261,28 @@ class LandModel(pulse.ActiveModel):
             self.XW_prev.vector().get_local(),
             self.XS_prev.vector().get_local(),
             self.TmB_prev.vector().get_local(),
-            )
+        )
 
     def calculate_gammasu(self):
         logger.debug("update gammasu")
         self._gammasu.vector()[:] = _gammasu(
             self.Zetas_prev.vector().get_local(),
             self._parameters["gammas"],
-            )
+        )
 
     def calculate_gammawu(self):
         logger.debug("update gammawu")
         self._gammawu.vector()[:] = _gammawu(
             self.Zetaw_prev.vector().get_local(),
             self._parameters["gammaw"],
-            )
+        )
 
     def dLambda(self, lmbda):
         logger.debug("Evaluate dLambda")
         if self.dt == 0:
             return self._dLambda
         else:
-            return (lmbda - self.lmbda_prev)/self.dt
+            return (lmbda - self.lmbda_prev) / self.dt
 
     @property
     def Aw(self):
@@ -333,7 +330,6 @@ class LandModel(pulse.ActiveModel):
             * (1.0 - (rs * scale_popu_rs))
             / (rs * scale_popu_rs)
         )
-
 
     def update_Zetas(self, lmbda):
         logger.debug("update Zetas")
@@ -386,7 +382,6 @@ class LandModel(pulse.ActiveModel):
     @property
     def dt(self) -> float:
         return self.t - self._t_prev
-
 
     def update_prev(self):
         logger.debug("update previous")

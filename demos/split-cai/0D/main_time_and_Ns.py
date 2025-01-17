@@ -1,5 +1,5 @@
-"""Same as 0D but with varying lambda
-"""
+"""Same as 0D but with varying lambda"""
+
 from pathlib import Path
 import gotranx
 import numpy as np
@@ -13,22 +13,20 @@ run_full_model = False
 # Do a set of simulations with various N:
 Ns = np.array([1, 2, 4, 6, 8, 10, 20, 50, 100, 200])
 
+
 def twitch(t, tstart=0.05, ca_ampl=-0.2):
     tau1 = 0.05 * 1000
     tau2 = 0.110 * 1000
 
     ca_diast = 0.0
 
-    beta = (tau1 / tau2) ** (-1 / (tau1 / tau2 - 1)) - (tau1 / tau2) ** (
-        -1 / (1 - tau2 / tau1)
-    )
+    beta = (tau1 / tau2) ** (-1 / (tau1 / tau2 - 1)) - (tau1 / tau2) ** (-1 / (1 - tau2 / tau1))
     ca = np.zeros_like(t)
 
     ca[t <= tstart] = ca_diast
 
     ca[t > tstart] = (ca_ampl - ca_diast) / beta * (
-        np.exp(-(t[t > tstart] - tstart) / tau1)
-        - np.exp(-(t[t > tstart] - tstart) / tau2)
+        np.exp(-(t[t > tstart] - tstart) / tau1) - np.exp(-(t[t > tstart] - tstart) / tau2)
     ) + ca_diast
     return ca + 1.0
 
@@ -43,11 +41,9 @@ ep_ode = ode - mechanics_comp
 ep_file = Path("ORdmm_Land_ep.py")
 
 
-
 # Generate model code from .ode file
 rebuild = False
 if not ep_file.is_file() or rebuild:
-
     # Generate code for full model.
     code = gotranx.cli.gotran2py.get_code(
         ode,
@@ -86,7 +82,7 @@ mechanics_model = ORdmm_Land_mechanics.__dict__
 
 # Set time step
 dt = 0.05
-simdur = 10 # Simulation duration
+simdur = 10  # Simulation duration
 t = np.arange(0, simdur, dt)
 fig, ax = plt.subplots()
 ax.plot(t, twitch(t))
@@ -172,7 +168,6 @@ Zetas_mechanics = np.zeros(len(t))
 lmbda_mechanics = np.zeros(len(t))
 
 
-
 for N in Ns:
     timing_init = time.perf_counter()
     # Get initial values from the EP model
@@ -183,27 +178,25 @@ for N in Ns:
     # Get initial values from the mechanics model
     y_mechanics = mechanics_model["init_state_values"]()
     p_mechanics = mechanics_model["init_parameter_values"]()
-    #mechanics_missing_values = np.zeros(len(mechanics_ode.missing_variables))
-    mechanics_missing_values = np.array([0.0001])  # For cai split, missing variable is cai. Set the initial value instead of setting to zero
+    # mechanics_missing_values = np.zeros(len(mechanics_ode.missing_variables))
+    mechanics_missing_values = np.array(
+        [0.0001]
+    )  # For cai split, missing variable is cai. Set the initial value instead of setting to zero
 
     # Get the initial values from the full model
     y = model["init_state_values"]()
-    p = model["init_parameter_values"]() # Used in lambda update
-
+    p = model["init_parameter_values"]()  # Used in lambda update
 
     # Get the default values of the missing values
     # A little bit chicken and egg problem here, but in this specific case we know that
     # the mechanics_missing_values is only the calcium concentration, which is a state variable
     # and this doesn't require any additional information to be calculated.
     mechanics_missing_values[:] = mv_ep(0, y_ep, p_ep, ep_missing_values)
-    ep_missing_values[:] = mv_mechanics(
-        0, y_mechanics, p_mechanics, mechanics_missing_values
-    )
+    ep_missing_values[:] = mv_mechanics(0, y_mechanics, p_mechanics, mechanics_missing_values)
 
     # We will store the previous missing values to check for convergence and use for updating
     prev_mechanics_missing_values = np.zeros_like(mechanics_missing_values)
     prev_mechanics_missing_values[:] = mechanics_missing_values
-
 
     inds = []
     count = 1
@@ -241,25 +234,26 @@ for N in Ns:
             dLambda_full[i] = p[dLambda_index]
             lmbda_full[i] = p[lmbda_index]
 
-
         timing_ep_start = time.perf_counter()
         # Forward step for the EP model
         y_ep[:] = fgr_ep(y_ep, ti, dt, p_ep, ep_missing_values)
         V_ep[i] = y_ep[V_index_ep]
         Ca_ep[i] = y_ep[Ca_index_ep]
         timing_ep_end = time.perf_counter()
-        timings_ep_steps.append(timing_ep_end-timing_ep_start)
+        timings_ep_steps.append(timing_ep_end - timing_ep_start)
 
         # Update missing values for the mechanics model
-        mechanics_missing_values[:] = mv_ep(t, y_ep, p_ep, ep_missing_values) # this function just outputs the value of cai straight from y_ep (does not calculate anything)
+        mechanics_missing_values[:] = mv_ep(
+            t, y_ep, p_ep, ep_missing_values
+        )  # this function just outputs the value of cai straight from y_ep (does not calculate anything)
 
         if i % N != 0:
             count += 1
             # Lambda still needs to be updated:
-            lmbda_ti = twitch(ti+dt)
+            lmbda_ti = twitch(ti + dt)
             p[lmbda_index] = lmbda_ti
             p_mechanics[lmbda_index_mechanics] = lmbda_ti
-            dLambda = (lmbda_ti - prev_lmbda)/dt
+            dLambda = (lmbda_ti - prev_lmbda) / dt
             p[dLambda_index] = dLambda
             p_mechanics[dLambda_index_mechanics] = dLambda
             prev_ti = ti
@@ -267,20 +261,18 @@ for N in Ns:
             timings_solveloop.append(time.perf_counter() - timing_loopstart)
             continue
 
-
         # Store the index of the time step where we performed a step
         inds.append(i)
 
         timing_mech_start = time.perf_counter()
         # Forward step for the mechanics model
-        #y_mechanics[:] = fgr_mechanics(
+        # y_mechanics[:] = fgr_mechanics(
         #    y_mechanics, ti, count * dt, p_mechanics, mechanics_missing_values
-        #)
+        # )
         # For consistency with other models:
         y_mechanics[:] = fgr_mechanics(
             y_mechanics, ti, count * dt, p_mechanics, prev_mechanics_missing_values
         )
-
 
         count = 1
         monitor_mechanics = mon_mechanics(
@@ -304,19 +296,17 @@ for N in Ns:
 
         # Update lambda
         # Should be done after all calculations except ep_missing, which is used for next ep step
-        lmbda_ti = twitch(ti+dt)
+        lmbda_ti = twitch(ti + dt)
         p[lmbda_index] = lmbda_ti
         p_mechanics[lmbda_index_mechanics] = lmbda_ti
-        dLambda = (lmbda_ti - prev_lmbda)/dt
+        dLambda = (lmbda_ti - prev_lmbda) / dt
         p[dLambda_index] = dLambda
         p_mechanics[dLambda_index_mechanics] = dLambda
         prev_ti = ti
         prev_lmbda = lmbda_ti
 
         # Update missing values for the EP model # J_TRPN for cai split
-        ep_missing_values[:] = mv_mechanics(
-            t, y_mechanics, p_mechanics, mechanics_missing_values
-        )
+        ep_missing_values[:] = mv_mechanics(t, y_mechanics, p_mechanics, mechanics_missing_values)
 
         prev_mechanics_missing_values[:] = mechanics_missing_values
 
