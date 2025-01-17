@@ -5,6 +5,7 @@ Created on Fri Jun 14 14:47:22 2024
 
 @author: lenamyklebust
 """
+
 import numpy as np
 import dolfin
 from pathlib import Path
@@ -13,9 +14,10 @@ from typing import Optional
 from typing import Tuple
 
 dx = 0.5
-Lx = 0.5 # 20  # mm
-Ly = 1 #7  # mm
+Lx = 0.5  # 20  # mm
+Ly = 1  # 7  # mm
 Lz = 2  # mm
+
 
 def setup_geometry(dx, Lx=Lx, Ly=Ly, Lz=Lz):
     mesh = dolfin.BoxMesh(
@@ -28,15 +30,17 @@ def setup_geometry(dx, Lx=Lx, Ly=Ly, Lz=Lz):
     )
     return mesh
 
+
 def default_markers() -> Dict[str, Tuple[int, int]]:
-        return {
-            "X0": 1,
-            "X1": 2,
-            "Y0": 3,
-            "Y1": 4,
-            "Z0": 5,
-            "Z1": 6,
-        }
+    return {
+        "X0": 1,
+        "X1": 2,
+        "Y0": 3,
+        "Y1": 4,
+        "Z0": 5,
+        "Z1": 6,
+    }
+
 
 def assign_surface_markers(
     mesh: dolfin.Mesh,
@@ -47,7 +51,6 @@ def assign_surface_markers(
 ) -> dolfin.MeshFunction:
     if markers is None:
         markers = default_markers()
-
 
     # Define domains for each surface
     x0 = dolfin.CompiledSubDomain("near(x[0], 0) && on_boundary")

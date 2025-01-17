@@ -26,77 +26,75 @@ def _Zeta(Zeta_prev, A, c, dLambda, dt, scheme: Scheme):
         # Forward euler
         return Zeta_prev + dZetas_dt * dt
 
+
 # From CaTrpn split
 def _XS(XS_prev, XW, gammasu, ksu, kws, dt):
     dXS_dt_linearized = -gammasu - ksu
     dXS_dt = -XS_prev * gammasu - XS_prev * ksu + XW * kws
     return XS_prev + np.where(
-        (np.abs(dXS_dt_linearized)> 1e-8),
-        dXS_dt * (np.exp(dXS_dt_linearized*dt) - 1) / dXS_dt_linearized,
-        dXS_dt * dt
-        )
+        (np.abs(dXS_dt_linearized) > 1e-8),
+        dXS_dt * (np.exp(dXS_dt_linearized * dt) - 1) / dXS_dt_linearized,
+        dXS_dt * dt,
+    )
+
 
 def _XW(XW_prev, XU, gammawu, kws, kuw, kwu, dt):
     dXW_dt_linearized = -gammawu - kws - kwu
     dXW_dt = -XW_prev * gammawu - XW_prev * kws + XU * kuw - XW_prev * kwu
     return XW_prev + np.where(
-        (np.abs(dXW_dt_linearized)> 1e-8),
-        dXW_dt * (np.exp(dXW_dt_linearized*dt) - 1) / dXW_dt_linearized,
-        dXW_dt * dt
-        )
+        (np.abs(dXW_dt_linearized) > 1e-8),
+        dXW_dt * (np.exp(dXW_dt_linearized * dt) - 1) / dXW_dt_linearized,
+        dXW_dt * dt,
+    )
+
 
 def _TmB(TmB_prev, CaTrpn, XU, ntm, kb, ku, dt):
     dTmB_dt_linearized = -(CaTrpn ** (ntm / 2)) * ku
     dTmB_dt = -TmB_prev * CaTrpn ** (ntm / 2) * ku + XU * (
-        kb * np.where(
-            (CaTrpn ** (-1 / 2 * ntm)<100),
-            CaTrpn ** (-1 / 2 * ntm),
-            100
-            )
-        )
+        kb * np.where((CaTrpn ** (-1 / 2 * ntm) < 100), CaTrpn ** (-1 / 2 * ntm), 100)
+    )
 
     return TmB_prev + np.where(
-        (np.abs(dTmB_dt_linearized)> 1e-8),
+        (np.abs(dTmB_dt_linearized) > 1e-8),
         dTmB_dt * (np.exp(dTmB_dt_linearized * dt) - 1) / dTmB_dt_linearized,
-        dTmB_dt * dt
-        )
+        dTmB_dt * dt,
+    )
+
 
 def _XU(XW, XS, TmB):
-    return -XW -XS + 1 - TmB
+    return -XW - XS + 1 - TmB
+
 
 def _gammawu(Zetaw, gammaw):
     return gammaw * np.abs(Zetaw)
 
 
 def _gammasu(Zetas, gammas):
-    return gammas * np.where(
-        (Zetas > 0),
-        Zetas,
-        np.where((Zetas < -1),
-        -Zetas - 1, 0)
-        )
-
+    return gammas * np.where((Zetas > 0), Zetas, np.where((Zetas < -1), -Zetas - 1, 0))
 
 
 # For cai split
 def _CaTrpn(CaTrpn, cai, ktrpn, ntrpn, cat50, dt, scheme: Scheme):
-        return (CaTrpn + np.where(
-                (np.abs(ktrpn * (-(((1000 * cai) / cat50) ** ntrpn) - 1)) > 1e-08),
-                (ktrpn * (-CaTrpn + ((1000 * cai) / cat50) ** ntrpn * (1 - CaTrpn)))
-                * (np.exp((ktrpn * (-(((1000 * cai) / cat50) ** ntrpn) - 1)) * dt) - 1)
-                / (ktrpn * (-(((1000 * cai) / cat50) ** ntrpn) - 1)),
-                (ktrpn * (-CaTrpn + ((1000 * cai) / cat50) ** ntrpn * (1 - CaTrpn))) * dt,
-                )
-            )
+    return CaTrpn + np.where(
+        (np.abs(ktrpn * (-(((1000 * cai) / cat50) ** ntrpn) - 1)) > 1e-08),
+        (ktrpn * (-CaTrpn + ((1000 * cai) / cat50) ** ntrpn * (1 - CaTrpn)))
+        * (np.exp((ktrpn * (-(((1000 * cai) / cat50) ** ntrpn) - 1)) * dt) - 1)
+        / (ktrpn * (-(((1000 * cai) / cat50) ** ntrpn) - 1)),
+        (ktrpn * (-CaTrpn + ((1000 * cai) / cat50) ** ntrpn * (1 - CaTrpn))) * dt,
+    )
+
+
 def _cat50(scale_HF_cat50_ref, Beta1, lmbda, cat50_ref, dt, scheme: Scheme):
-        return (scale_HF_cat50_ref * (Beta1 * ((np.where((lmbda < 1.2), lmbda, 1.2)) - 1) + cat50_ref))
+    return scale_HF_cat50_ref * (Beta1 * ((np.where((lmbda < 1.2), lmbda, 1.2)) - 1) + cat50_ref)
+
 
 def _J_TRPN(CaTrpn, cai, ktrpn, ntrpn, cat50, trpnmax, dt, scheme: Scheme):
-    return (ktrpn * (-CaTrpn + ((1000 * cai) / cat50) ** ntrpn * (1 - CaTrpn)))*trpnmax
+    return (ktrpn * (-CaTrpn + ((1000 * cai) / cat50) ** ntrpn * (1 - CaTrpn))) * trpnmax
+
 
 _parameters = {
     "Beta0": 2.3,
-    "Beta1": -2.4, # New for cai split
+    "Beta1": -2.4,  # New for cai split
     "Tot_A": 25.0,
     "Tref": 120,
     "kuw": 0.182,
@@ -106,14 +104,14 @@ _parameters = {
     "rw": 0.5,
     "gammas": 0.0085,  # Parameters from CaTrpn split
     "gammaw": 0.615,  # Parameters from CaTrpn split
-    "Trpn50": 0.35,   # Parameters from CaTrpn split
-    "ntm": 2.4, # Parameters from CaTrpn split.
-    "ku": 0.04, # Parameters from CaTrpn split.
-    "ntrpn": 2, # New for cai split
-    "ktrpn": 0.1, # New for cai split
-    "scale_HF_cat50_ref": 1.0, # New for cai split
-    "cat50_ref": 0.805, # New for cai split
-    "trpnmax": 0.07, # New for cai split
+    "Trpn50": 0.35,  # Parameters from CaTrpn split
+    "ntm": 2.4,  # Parameters from CaTrpn split.
+    "ku": 0.04,  # Parameters from CaTrpn split.
+    "ntrpn": 2,  # New for cai split
+    "ktrpn": 0.1,  # New for cai split
+    "scale_HF_cat50_ref": 1.0,  # New for cai split
+    "cat50_ref": 0.805,  # New for cai split
+    "trpnmax": 0.07,  # New for cai split
 }
 
 
@@ -126,7 +124,7 @@ class LandModel(pulse.ActiveModel):
         cai,
         mesh,
         CaTrpn=None,
-        TmB=None, # Variables from CaTrpn split
+        TmB=None,  # Variables from CaTrpn split
         XS=None,
         XW=None,
         parameters=None,
@@ -163,24 +161,23 @@ class LandModel(pulse.ActiveModel):
         self.TmB_prev = dolfin.Function(self.function_space)
         if TmB is not None:
             self.TmB_prev.assign(TmB)
-        else: # Set initial TmB value
+        else:  # Set initial TmB value
             self._TmB.interpolate(dolfin.Constant(1))
             self.TmB_prev.interpolate(dolfin.Constant(1))
 
         """ New for Cai split"""
-        self.cai = cai # Missing variable
-        self._J_TRPN =  dolfin.Function(self.function_space) # Missing in ep
-        self._cat50 =  dolfin.Function(self.function_space)
+        self.cai = cai  # Missing variable
+        self._J_TRPN = dolfin.Function(self.function_space)  # Missing in ep
+        self._cat50 = dolfin.Function(self.function_space)
         self._CaTrpn = dolfin.Function(self.function_space)
-        self.CaTrpn_prev =  dolfin.Function(self.function_space)
+        self.CaTrpn_prev = dolfin.Function(self.function_space)
 
         if CaTrpn is not None:
             self.CaTrpn_prev.assign(CaTrpn)
-        else: # Set initial Catrpn value
+        else:  # Set initial Catrpn value
             self._CaTrpn.interpolate(dolfin.Constant(0.0001))
             self.CaTrpn_prev.interpolate(dolfin.Constant(0.0001))
         """ """
-
 
         if parameters is None:
             parameters = _parameters
@@ -210,21 +207,21 @@ class LandModel(pulse.ActiveModel):
         self._dLambda_tol = dLambda_tol
         self._t_prev = 0.0
 
-
     """ From CaTrpn split"""
+
     @property
     def ksu(self):
         kws = self._parameters["kws"]
         rw = self._parameters["rw"]
         rs = self._parameters["rs"]
-        return ((kws * rw) * (-1 + 1 / rs))
+        return (kws * rw) * (-1 + 1 / rs)
 
     @property
     def kwu(self):
         kuw = self._parameters["kuw"]
         rw = self._parameters["rw"]
         kws = self._parameters["kws"]
-        return (kuw * (-1 + 1 / rw) - kws)
+        return kuw * (-1 + 1 / rw) - kws
 
     @property
     def kb(self):
@@ -233,8 +230,7 @@ class LandModel(pulse.ActiveModel):
         ku = self._parameters["ku"]
         rs = self._parameters["rs"]
         rw = self._parameters["rw"]
-        return ((Trpn50**ntm * ku) / (-rw * (1 - rs) + 1 - rs))
-
+        return (Trpn50**ntm * ku) / (-rw * (1 - rs) + 1 - rs)
 
     @property
     def XS(self):
@@ -260,7 +256,6 @@ class LandModel(pulse.ActiveModel):
     def gammasu(self):
         return self._gammasu
 
-
     def update_TmB(self):
         logger.debug("update TmB")
         self._TmB.vector()[:] = _TmB(
@@ -270,8 +265,8 @@ class LandModel(pulse.ActiveModel):
             self._parameters["ntm"],
             self.kb,
             self._parameters["ku"],
-            self.dt
-            )
+            self.dt,
+        )
 
     def update_XS(self):
         logger.debug("update XS")
@@ -281,8 +276,8 @@ class LandModel(pulse.ActiveModel):
             self.gammasu.vector().get_local(),
             self.ksu,
             self._parameters["kws"],
-            self.dt
-            )
+            self.dt,
+        )
 
     def update_XW(self):
         logger.debug("update XW")
@@ -293,8 +288,8 @@ class LandModel(pulse.ActiveModel):
             self._parameters["kws"],
             self._parameters["kuw"],
             self.kwu,
-            self.dt
-            )
+            self.dt,
+        )
 
     # Calculate monitors
     def calculate_XU(self):
@@ -303,21 +298,21 @@ class LandModel(pulse.ActiveModel):
             self.XW_prev.vector().get_local(),
             self.XS_prev.vector().get_local(),
             self.TmB_prev.vector().get_local(),
-            )
+        )
 
     def calculate_gammasu(self):
         logger.debug("update gammasu")
         self._gammasu.vector()[:] = _gammasu(
             self.Zetas_prev.vector().get_local(),
             self._parameters["gammas"],
-            )
+        )
 
     def calculate_gammawu(self):
         logger.debug("update gammawu")
         self._gammawu.vector()[:] = _gammawu(
             self.Zetaw_prev.vector().get_local(),
             self._parameters["gammaw"],
-            )
+        )
 
     """ New for cai split"""
 
@@ -329,13 +324,14 @@ class LandModel(pulse.ActiveModel):
         logger.debug("update CaTrpn")
         self._CaTrpn.vector()[:] = _CaTrpn(
             CaTrpn=self.CaTrpn_prev.vector().get_local(),
-            cai=self.cai.vector().get_local(), # Missing variable
+            cai=self.cai.vector().get_local(),  # Missing variable
             ktrpn=self._parameters["ktrpn"],
             ntrpn=self._parameters["ntrpn"],
             cat50=self.cat50.vector().get_local(),
             dt=self.dt,
             scheme=self._scheme,
-            )
+        )
+
     @property
     def cat50(self):
         return self._cat50
@@ -349,7 +345,7 @@ class LandModel(pulse.ActiveModel):
             cat50_ref=self._parameters["cat50_ref"],
             dt=self.dt,
             scheme=self._scheme,
-            )
+        )
 
     @property
     def J_TRPN(self):
@@ -358,15 +354,15 @@ class LandModel(pulse.ActiveModel):
     def calculate_J_TRPN(self):
         logger.debug("update J_TRPN")
         self._J_TRPN.vector()[:] = _J_TRPN(
-            CaTrpn = self.CaTrpn_prev.vector().get_local(),
-            cai=self.cai.vector().get_local(), # Missing variable
+            CaTrpn=self.CaTrpn_prev.vector().get_local(),
+            cai=self.cai.vector().get_local(),  # Missing variable
             ktrpn=self._parameters["ktrpn"],
             ntrpn=self._parameters["ntrpn"],
             cat50=self.cat50.vector().get_local(),
             trpnmax=self._parameters["trpnmax"],
             dt=self.dt,
             scheme=self._scheme,
-            )
+        )
 
     """ """
 
@@ -375,7 +371,7 @@ class LandModel(pulse.ActiveModel):
         if self.dt == 0:
             return self._dLambda
         else:
-            return (lmbda - self.lmbda_prev)/self.dt
+            return (lmbda - self.lmbda_prev) / self.dt
 
     @property
     def Aw(self):
@@ -423,7 +419,6 @@ class LandModel(pulse.ActiveModel):
             * (1.0 - (rs * scale_popu_rs))
             / (rs * scale_popu_rs)
         )
-
 
     def update_Zetas(self, lmbda):
         logger.debug("update Zetas")
@@ -474,12 +469,9 @@ class LandModel(pulse.ActiveModel):
             self._scheme,
         )
 
-
-
     @property
     def dt(self) -> float:
         return self.t - self._t_prev
-
 
     def update_prev(self):
         logger.debug("update previous")
@@ -546,9 +538,8 @@ class LandModel(pulse.ActiveModel):
 
         """ New for cai split"""
         self.calculate_cat50()
-        self.calculate_J_TRPN() # Missing in ep
+        self.calculate_J_TRPN()  # Missing in ep
         self.update_CaTrpn()
-
 
         return pulse.material.active_model.Wactive_transversally(
             Ta=self.Ta(lmbda),

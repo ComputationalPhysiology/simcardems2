@@ -1,17 +1,13 @@
 import logging
 import gotranx
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Sequence
 import numpy as np
 import dolfin
 import pulse
 import beat
-import configparser
-import sympy
-import os
 import argparse
 import toml
-import ufl_legacy as ufl
 import matplotlib.pyplot as plt
 
 from simcardems2 import utils
@@ -62,24 +58,20 @@ stim_region = (
     [config["stim"]["zmin"], config["stim"]["zmax"]],
 )
 out_ep_var_names = [
-    config["write_all_ep"][f"{i}"]["name"]
-    for i in range(config["write_all_ep"]["numbers"])
+    config["write_all_ep"][f"{i}"]["name"] for i in range(config["write_all_ep"]["numbers"])
 ]
 out_mech_var_names = [
-    config["write_all_mech"][f"{i}"]["name"]
-    for i in range(config["write_all_mech"]["numbers"])
+    config["write_all_mech"][f"{i}"]["name"] for i in range(config["write_all_mech"]["numbers"])
 ]
 out_ep_coord_names = [
-    config["write_point_ep"][f"{i}"]["name"]
-    for i in range(config["write_point_ep"]["numbers"])
+    config["write_point_ep"][f"{i}"]["name"] for i in range(config["write_point_ep"]["numbers"])
 ]
 ep_coords = [
     [config["write_point_ep"][f"{varnr}"][f"{coord}"] for coord in ["x", "y", "z"]]
     for varnr in range(config["write_point_ep"]["numbers"])
 ]
 out_mech_coord_names = [
-    config["write_point_mech"][f"{i}"]["name"]
-    for i in range(config["write_point_mech"]["numbers"])
+    config["write_point_mech"][f"{i}"]["name"] for i in range(config["write_point_mech"]["numbers"])
 ]
 mech_coords = [
     [config["write_point_mech"][f"{varnr}"][f"{coord}"] for coord in ["x", "y", "z"]]
@@ -290,11 +282,10 @@ p_ep_ = ep_model["init_parameter_values"](i_Stim_Amplitude=0.0)
 ep_missing_values_ = np.zeros(len(ep_model["missing"]))
 
 ep_mesh = mesh
-#ep_mesh = dolfin.adapt(mesh)
-#ep_mesh = dolfin.adapt(dolfin.adapt(mesh))
-#ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
-#ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh))))
-
+# ep_mesh = dolfin.adapt(mesh)
+# ep_mesh = dolfin.adapt(dolfin.adapt(mesh))
+# ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh)))
+# ep_mesh = dolfin.adapt(dolfin.adapt(dolfin.adapt(dolfin.adapt(mesh))))
 
 
 time = dolfin.Constant(0.0)
@@ -371,7 +362,7 @@ ode = beat.odesolver.DolfinODESolver(
     num_missing_variables=len(ep_model["missing"]),
 )
 
-#ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
+# ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=0.5)
 ep_solver = beat.MonodomainSplittingSolver(pde=pde, ode=ode, theta=1)
 
 marker_functions = pulse.MarkerFunctions(ffun=ffun_bcs)
@@ -445,9 +436,9 @@ mech_variables = {
     "Zetas": active_model._Zetas,
     "Zetaw": active_model._Zetaw,
     "lambda": active_model.lmbda,
-    "XS":active_model.XS,
-    "XW":active_model.XW,
-    "dLambda":active_model._dLambda,
+    "XS": active_model.XS,
+    "XW": active_model.XW,
+    "dLambda": active_model._dLambda,
     "sigma_ff": sigma_ff,
     "sigma_ff_active": sigma_ff_active,
     "sigma_ff_passive": sigma_ff_passive,
@@ -537,19 +528,17 @@ for i, ti in enumerate(t):
 
     # Assign values to ep function
     for out_ep_var in list(set(out_ep_var_names) | set(out_ep_coord_names)):
-        #out_ep_funcs[out_ep_var].vector()[:] = ode._values[out_indices[out_ep_var]]
+        # out_ep_funcs[out_ep_var].vector()[:] = ode._values[out_indices[out_ep_var]]
         out_ep_funcs[out_ep_var].vector()[:] = ode._values[ep_model["state_index"](out_ep_var)]
 
     # Store values to plot time series for given coord
     for var_nr in range(config["write_point_ep"]["numbers"]):
         out_ep_var = config["write_point_ep"][f"{var_nr}"]["name"]
-        out_ep_example_nodes[out_ep_var][i] = out_ep_funcs[out_ep_var](
-            ep_coords[var_nr]
-        )
+        out_ep_example_nodes[out_ep_var][i] = out_ep_funcs[out_ep_var](ep_coords[var_nr])
         # Compute volume averages
-        out_ep_volume_average_timeseries[out_ep_var][
-            i
-        ] = compute_function_average_over_mesh(out_ep_funcs[out_ep_var], ep_mesh)
+        out_ep_volume_average_timeseries[out_ep_var][i] = compute_function_average_over_mesh(
+            out_ep_funcs[out_ep_var], ep_mesh
+        )
 
     if i % config["sim"]["N"] != 0:
         timing_single_loop.stop()
@@ -571,7 +560,7 @@ for i, ti in enumerate(t):
 
     print("Solve mechanics")
     timing_mech = dolfin.Timer("mech time")
-    active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"] # Addition!
+    active_model.t = ti + config["sim"]["N"] * config["sim"]["dt"]  # Addition!
     nit, conv = problem.solve(ti, config["sim"]["N"] * config["sim"]["dt"])
     no_of_newton_iterations.append(nit)
     print(f"No of iterations: {nit}")
@@ -585,7 +574,7 @@ for i, ti in enumerate(t):
     missing_ep.interpolate_mechanics_to_ep()
     missing_ep.ep_function_to_values()
     lmbda.interpolate(active_model.lmbda)
-    p_ep[lmbda_index_ep, :] = lmbda.vector().get_local() # p_ep are the ep parameters
+    p_ep[lmbda_index_ep, :] = lmbda.vector().get_local()  # p_ep are the ep parameters
     timing_var_transfer.stop()
     timings_var_transfer.append(timing_var_transfer.elapsed()[0])
 
@@ -594,14 +583,12 @@ for i, ti in enumerate(t):
 
     for var_nr in range(config["write_point_mech"]["numbers"]):
         out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
-        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](
-            mech_coords[var_nr]
-        )
+        out_mech_example_nodes[out_mech_var][i] = mech_variables[out_mech_var](mech_coords[var_nr])
 
         # Compute volume averages
-        out_mech_volume_average_timeseries[out_mech_var][
-            i
-        ] = compute_function_average_over_mesh(mech_variables[out_mech_var], mesh)
+        out_mech_volume_average_timeseries[out_mech_var][i] = compute_function_average_over_mesh(
+            mech_variables[out_mech_var], mesh
+        )
 
     if write_disp:
         with dolfin.XDMFFile(disp_file.as_posix()) as file:
@@ -663,12 +650,26 @@ for out_mech_var in out_mech_coord_names:
 # Write point traces for later analysis
 for var_nr in range(config["write_point_ep"]["numbers"]):
     out_ep_var = config["write_point_ep"][f"{var_nr}"]["name"]
-    with open(Path(outdir / f"{out_ep_var}_ep_coord{ep_coords[var_nr][0]},{ep_coords[var_nr][1]},{ep_coords[var_nr][2]}.txt".replace(" ", "")), "w") as f:
-         np.savetxt(f, out_ep_example_nodes[out_ep_var][inds])
+    with open(
+        Path(
+            outdir
+            / f"{out_ep_var}_ep_coord{ep_coords[var_nr][0]},{ep_coords[var_nr][1]},{ep_coords[var_nr][2]}.txt".replace(
+                " ", ""
+            )
+        ),
+        "w",
+    ) as f:
+        np.savetxt(f, out_ep_example_nodes[out_ep_var][inds])
 
 for var_nr in range(config["write_point_mech"]["numbers"]):
     out_mech_var = config["write_point_mech"][f"{var_nr}"]["name"]
-    with open(Path(outdir / f"{out_mech_var}_mech_coord{mech_coords[var_nr][0]},{mech_coords[var_nr][1]},{mech_coords[var_nr][2]}.txt"), "w") as f:
+    with open(
+        Path(
+            outdir
+            / f"{out_mech_var}_mech_coord{mech_coords[var_nr][0]},{mech_coords[var_nr][1]},{mech_coords[var_nr][2]}.txt"
+        ),
+        "w",
+    ) as f:
         np.savetxt(f, out_mech_example_nodes[out_mech_var][inds])
 
 print(f"Solved on {100 * len(inds) / len(t)}% of the time steps")

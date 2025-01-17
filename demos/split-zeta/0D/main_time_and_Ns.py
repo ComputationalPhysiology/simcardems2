@@ -6,22 +6,20 @@ import time
 save_traces = False
 run_full_model = False
 
+
 def twitch(t, tstart=0.05, ca_ampl=-0.2):
     tau1 = 0.05 * 1000
     tau2 = 0.110 * 1000
 
     ca_diast = 0.0
 
-    beta = (tau1 / tau2) ** (-1 / (tau1 / tau2 - 1)) - (tau1 / tau2) ** (
-        -1 / (1 - tau2 / tau1)
-    )
+    beta = (tau1 / tau2) ** (-1 / (tau1 / tau2 - 1)) - (tau1 / tau2) ** (-1 / (1 - tau2 / tau1))
     ca = np.zeros_like(t)
 
     ca[t <= tstart] = ca_diast
 
     ca[t > tstart] = (ca_ampl - ca_diast) / beta * (
-        np.exp(-(t[t > tstart] - tstart) / tau1)
-        - np.exp(-(t[t > tstart] - tstart) / tau2)
+        np.exp(-(t[t > tstart] - tstart) / tau1) - np.exp(-(t[t > tstart] - tstart) / tau2)
     ) + ca_diast
     return ca + 1.0
 
@@ -32,12 +30,13 @@ def update_lambda_and_dlambda(t, prev_lmbda, dt):
     p_mechanics[lmbda_index_mechanics] = lmbda_ti
     p_ep[lmbda_index_ep] = lmbda_ti
 
-    dLambda = (lmbda_ti - prev_lmbda)/dt
+    dLambda = (lmbda_ti - prev_lmbda) / dt
     p[dLambda_index] = dLambda
     p_mechanics[dLambda_index_mechanics] = dLambda
     p_ep[dLambda_index_ep] = dLambda
     prev_lmbda = lmbda_ti
     return p, p_mechanics, p_ep, prev_lmbda
+
 
 # Load the model
 ode = gotranx.load_ode("ORdmm_Land.ode")
@@ -50,11 +49,9 @@ ep_ode = ode - mechanics_comp
 ep_file = Path("ORdmm_Land_ep.py")
 
 
-
 # Generate model code from .ode file
 rebuild = False
 if not ep_file.is_file() or rebuild:
-
     # Generate code for full model. For comparison
     code = gotranx.cli.gotran2py.get_code(
         ode,
@@ -92,7 +89,7 @@ mechanics_model = ORdmm_Land_mechanics.__dict__
 
 # Set ep-time step to 0.05 ms
 dt = 0.05
-simdur = 10 # Simulation duration
+simdur = 10  # Simulation duration
 t = np.arange(0, simdur, dt)
 
 
@@ -198,15 +195,12 @@ for N in Ns:
     p_mechanics = mechanics_model["init_parameter_values"]()
     mechanics_missing_values = np.repeat(0.0001, len(mechanics_ode.missing_variables))
 
-
     # Get the initial values from the full model
     y = model["init_state_values"]()
-    p = model["init_parameter_values"]() # Used in lambda update
+    p = model["init_parameter_values"]()  # Used in lambda update
 
     mechanics_missing_values[:] = mv_ep(0, y_ep, p_ep, ep_missing_values)
-    ep_missing_values[:] = mv_mechanics(
-        0, y_mechanics, p_mechanics, mechanics_missing_values
-    )
+    ep_missing_values[:] = mv_mechanics(0, y_mechanics, p_mechanics, mechanics_missing_values)
 
     # We will store the previous missing values to check for convergence
     prev_mechanics_missing_values = np.zeros_like(mechanics_missing_values)
@@ -252,14 +246,14 @@ for N in Ns:
         XS_ep[i] = y_ep[XS_index_ep]
 
         timing_ep_end = time.perf_counter()
-        timings_ep_steps.append(timing_ep_end-timing_ep_start)
+        timings_ep_steps.append(timing_ep_end - timing_ep_start)
 
         # Update missing values for the mechanics model
         mechanics_missing_values[:] = mv_ep(t, y_ep, p_ep, ep_missing_values)
 
         if i % N != 0:
             count += 1
-            p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti+dt, prev_lmbda, dt)
+            p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti + dt, prev_lmbda, dt)
             timings_solveloop.append(time.perf_counter() - timing_loopstart)
             continue
 
@@ -287,16 +281,13 @@ for N in Ns:
         timing_mech_end = time.perf_counter()
         timings_mech_steps.append(timing_mech_end - timing_mech_start)
 
-        p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti+dt, prev_lmbda, dt)
+        p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti + dt, prev_lmbda, dt)
         # Update missing values for the EP model
-        ep_missing_values[:] = mv_mechanics(
-            t, y_mechanics, p_mechanics, mechanics_missing_values
-        )
+        ep_missing_values[:] = mv_mechanics(t, y_mechanics, p_mechanics, mechanics_missing_values)
 
         prev_mechanics_missing_values[:] = mechanics_missing_values
 
         timings_solveloop.append(time.perf_counter() - timing_loopstart)
-
 
     timing_total = time.perf_counter() - timing_init
     perc = 100 * len(inds) / len(t)

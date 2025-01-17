@@ -7,22 +7,20 @@ import time
 save_traces = False
 run_full_model = True
 
+
 def twitch(t, tstart=0.05, ca_ampl=-0.2):
     tau1 = 0.05 * 1000
     tau2 = 0.110 * 1000
 
     ca_diast = 0.0
 
-    beta = (tau1 / tau2) ** (-1 / (tau1 / tau2 - 1)) - (tau1 / tau2) ** (
-        -1 / (1 - tau2 / tau1)
-    )
+    beta = (tau1 / tau2) ** (-1 / (tau1 / tau2 - 1)) - (tau1 / tau2) ** (-1 / (1 - tau2 / tau1))
     ca = np.zeros_like(t)
 
     ca[t <= tstart] = ca_diast
 
     ca[t > tstart] = (ca_ampl - ca_diast) / beta * (
-        np.exp(-(t[t > tstart] - tstart) / tau1)
-        - np.exp(-(t[t > tstart] - tstart) / tau2)
+        np.exp(-(t[t > tstart] - tstart) / tau1) - np.exp(-(t[t > tstart] - tstart) / tau2)
     ) + ca_diast
     return ca + 1.0
 
@@ -33,7 +31,7 @@ def update_lambda_and_dlambda(t, prev_lmbda, dt):
     p_mechanics[lmbda_index_mechanics] = lmbda_ti
     p_ep[lmbda_index_ep] = lmbda_ti
 
-    dLambda = (lmbda_ti - prev_lmbda)/dt
+    dLambda = (lmbda_ti - prev_lmbda) / dt
     p[dLambda_index] = dLambda
     p_mechanics[dLambda_index_mechanics] = dLambda
     prev_lmbda = lmbda_ti
@@ -53,7 +51,6 @@ ep_file = Path("ORdmm_Land_ep.py")
 # Generate model code from .ode file
 rebuild = False
 if not ep_file.is_file() or rebuild:
-
     # Generate code for full model
     code = gotranx.cli.gotran2py.get_code(
         ode,
@@ -78,7 +75,6 @@ if not ep_file.is_file() or rebuild:
     ep_file.write_text(code_ep)
     Path("ORdmm_Land_mechanics.py").write_text(code_mechanics)
     Path("ORdmm_Land.py").write_text(code)
-
 
 
 # Import ep, mechanics and full model
@@ -128,14 +124,12 @@ mv_mechanics = mechanics_model["missing_values"]
 Ta_index_mechanics = mechanics_model["monitor_index"]("Ta")
 
 
-
 lmbda_index_mechanics = mechanics_model["parameter_index"]("lmbda")
 dLambda_index_mechanics = mechanics_model["parameter_index"]("dLambda")
 Zetas_index_mechanics = mechanics_model["state_index"]("Zetas")
 XS_index_mechanics = mechanics_model["state_index"]("XS")
 TmB_index_mechanics = mechanics_model["state_index"]("TmB")
 XU_index_mechanics = mechanics_model["monitor_index"]("XU")
-
 
 
 # Forwared generalized rush larsen scheme for the full model
@@ -204,14 +198,12 @@ for N in Ns:
     y = model["init_state_values"]()
     p = model["init_parameter_values"]()
 
-
     # The missing variables in mechanics is catrpn. No missing variables in ep
     mechanics_missing_values[:] = mv_ep(0, y_ep, p_ep)
 
     # We will store the previous missing values to check for convergence
     prev_mechanics_missing_values = np.zeros_like(mechanics_missing_values)
     prev_mechanics_missing_values[:] = mechanics_missing_values
-
 
     inds = []
     count = 1
@@ -243,23 +235,24 @@ for N in Ns:
 
         timing_ep_start = time.perf_counter()
         # Forward step for the EP model
-        y_ep[:] = fgr_ep(y_ep, ti, dt, p_ep) # no missing ep values for cai-catrpn split
+        y_ep[:] = fgr_ep(y_ep, ti, dt, p_ep)  # no missing ep values for cai-catrpn split
         V_ep[i] = y_ep[V_index_ep]
         Ca_ep[i] = y_ep[Ca_index_ep]
         CaTrpn_ep[i] = y_ep[CaTrpn_index_ep]
-        monitor_ep = mon_ep(ti, y_ep, p_ep) # no missing ep values for cai-catrpn split
+        monitor_ep = mon_ep(ti, y_ep, p_ep)  # no missing ep values for cai-catrpn split
         J_TRPN_ep[i] = monitor_ep[J_TRPN_index_ep]
 
         timing_ep_end = time.perf_counter()
-        timings_ep_steps.append(timing_ep_end-timing_ep_start)
-
+        timings_ep_steps.append(timing_ep_end - timing_ep_start)
 
         # Update missing values for the mechanics model
-        mechanics_missing_values[:] = mv_ep(t, y_ep, p_ep) # no missing ep values for cai-catrpn split
+        mechanics_missing_values[:] = mv_ep(
+            t, y_ep, p_ep
+        )  # no missing ep values for cai-catrpn split
 
         if i % N != 0:
             count += 1
-            p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti+dt, prev_lmbda, dt)
+            p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti + dt, prev_lmbda, dt)
             timings_solveloop.append(time.perf_counter() - timing_loopstart)
             continue
 
@@ -268,9 +261,9 @@ for N in Ns:
 
         # Forward step for the mechanics model
         timing_mech_start = time.perf_counter()
-        #y_mechanics[:] = fgr_mechanics(
+        # y_mechanics[:] = fgr_mechanics(
         #    y_mechanics, ti, count * dt, p_mechanics, mechanics_missing_values
-        #)
+        # )
         y_mechanics[:] = fgr_mechanics(
             y_mechanics, ti, count * dt, p_mechanics, prev_mechanics_missing_values
         )
@@ -293,7 +286,7 @@ for N in Ns:
         timings_mech_steps.append(timing_mech_end - timing_mech_start)
         # no missing ep values for cai-catrpn split
 
-        p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti+dt, prev_lmbda, dt)
+        p, p_mechanics, p_ep, prev_lmbda = update_lambda_and_dlambda(ti + dt, prev_lmbda, dt)
         # Update missing values for the mechanics model
         prev_mechanics_missing_values[:] = mechanics_missing_values
 
@@ -316,7 +309,6 @@ for N in Ns:
         np.savetxt(f, timings_mech_steps)
         f.write("Total time\n")
         f.write(f"{timing_total}\n")
-
 
     with open(f"V_ep_N{N}.txt", "w") as f:
         np.savetxt(f, V_ep[inds])
@@ -341,10 +333,10 @@ for N in Ns:
         with open("Ca_full.txt", "w") as f:
             np.savetxt(f, Ca_full)
         with open("CaTrpn_full.txt", "w") as f:
-             np.savetxt(f, CaTrpn_full)
+            np.savetxt(f, CaTrpn_full)
         with open("J_TRPN_full.txt", "w") as f:
-             np.savetxt(f, J_TRPN_full)
+            np.savetxt(f, J_TRPN_full)
         with open("XS_full.txt", "w") as f:
-             np.savetxt(f, XS_full)
+            np.savetxt(f, XS_full)
         with open("Zetas_full.txt", "w") as f:
-             np.savetxt(f, Zetas_full)
+            np.savetxt(f, Zetas_full)

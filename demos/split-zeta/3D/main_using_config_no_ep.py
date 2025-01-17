@@ -1,25 +1,13 @@
 import logging
-import gotranx
 from pathlib import Path
-from typing import Any, Sequence
 import numpy as np
 import dolfin
 import pulse
-import beat
-import configparser
-import sympy
-import os
-import argparse
-import toml
-import ufl_legacy as ufl
 import matplotlib.pyplot as plt
 
 
-from simcardems2 import utils
 from simcardems2 import mechanicssolver
-from simcardems2 import interpolation
 from simcardems2.land_Zetasplit import LandModel
-from simcardems2.validate_input_types import validate_input_types
 
 
 try:
@@ -37,17 +25,13 @@ except ImportError:
 logging.getLogger("beat").setLevel(logging.ERROR)
 
 mesh = dolfin.Mesh()
-with dolfin.XDMFFile(f'mesh_mech_0.5dx_0.5Lx_1Ly_2Lz.xdmf') as infile:
+with dolfin.XDMFFile("mesh_mech_0.5dx_0.5Lx_1Ly_2Lz.xdmf") as infile:
     infile.read(mesh)
 
 
-
 ffun_bcs = dolfin.MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
-with dolfin.XDMFFile(f'mesh_mech_0.5dx_0.5Lx_1Ly_2Lz_surface_ffun.xdmf') as infile:
+with dolfin.XDMFFile("mesh_mech_0.5dx_0.5Lx_1Ly_2Lz_surface_ffun.xdmf") as infile:
     infile.read(ffun_bcs)
-
-
-
 
 
 material_parameters = dict(
@@ -63,7 +47,6 @@ material_parameters = dict(
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
-
 
 
 time = dolfin.Constant(0.0)
@@ -100,11 +83,10 @@ def create_boundary_conditions(
             )
         return bcs
 
-
-
     # Collect Boundary Conditions
     bcs = pulse.BoundaryConditions(dirichlet=(dirichlet_bc,))
     return bcs
+
 
 f0 = dolfin.as_vector([1.0, 0.0, 0.0])
 s0 = dolfin.as_vector([0.0, 1.0, 0.0])
@@ -139,9 +121,9 @@ mech_variables = {
     "Zetas": active_model._Zetas,
     "Zetaw": active_model._Zetaw,
     "lambda": active_model.lmbda,
-    "XS":active_model.XS,
-    "XW":active_model.XW,
-    "dLambda":active_model._dLambda,
+    "XS": active_model.XS,
+    "XW": active_model.XW,
+    "dLambda": active_model._dLambda,
     "sigma_ff": sigma_ff,
     "sigma_ff_active": sigma_ff_active,
     "sigma_ff_passive": sigma_ff_passive,
@@ -218,7 +200,6 @@ for i in range(20):
     problem.solve(ti, dt)
     active_model.update_prev()
 
-
     U, p = problem.state.split(deepcopy=True)
 
     Ta = active_model.Ta(active_model.lmbda)
@@ -228,7 +209,6 @@ for i in range(20):
     lmbdas_saved.append(dolfin.assemble(lmbda_saved * dolfin.dx))
     Tas.append(Ta_mean)
     Tas_saved.append(dolfin.assemble(active_model.Ta_current * dolfin.dx))
-
 
     with dolfin.XDMFFile(disp_file.as_posix()) as file:
         file.write_checkpoint(U, "disp", j, dolfin.XDMFFile.Encoding.HDF5, True)

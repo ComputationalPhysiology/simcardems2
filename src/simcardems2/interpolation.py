@@ -54,19 +54,3 @@ class MissingValue:
     def interpolate_mechanics_to_ep(self) -> None:
         for i in range(self.num_values):
             self.u_ep[i].interpolate(self.u_mechanics_int[i])
-
-    @property
-    def ep_array(self):
-        return self.u_ep.vector().get_local()
-
-    @ep_array.setter
-    def ep_array(self, value):
-        self.u_ep.vector().set_local(value)
-
-    @property
-    def mechanics_array(self):
-        return self.u_mechanics.vector().get_local()
-
-    @mechanics_array.setter
-    def mechanics_array(self, value):
-        self.u_mechanics.vector().set_local(value)
