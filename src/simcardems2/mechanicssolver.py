@@ -61,7 +61,7 @@ class NewtonSolver(dolfin.NewtonSolver):
         logger.info(f"Initialize NewtonSolver with parameters: {parameters!r}")
         dolfin.PETScOptions.clear()
         self.dx = dolfin.Measure("dx", domain=state.function_space().mesh())
-        self.volume = dolfin.assemble(dolfin.Constant(1) * self.dx)
+        # self.volume = dolfin.assemble(dolfin.Constant(1) * self.dx)
         self._problem = problem
         self._state = state
         self._update_cb = update_cb
@@ -187,7 +187,9 @@ class NewtonSolver(dolfin.NewtonSolver):
                 self.active._dLambda, (lmbda - self.active.lmbda_prev) / self.active.dt
             )
 
-        self.active._projector.project(self.active.Ta_current, self.active.Ta(lmbda))
+        Ta = self.active.Ta(lmbda)
+        if not isinstance(Ta, ufl.constantvalue.Zero):
+            self.active._projector.project(self.active.Ta_current, self.active.Ta(lmbda))
         self.active.update_current(lmbda=lmbda)
         self.active.update_prev()
         if not conv:

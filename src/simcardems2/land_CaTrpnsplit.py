@@ -172,7 +172,7 @@ class LandModel(pulse.ActiveModel):
         self.Ta_current = dolfin.Function(self.function_space, name="Ta")
         self._projector = utils.Projector(self.function_space)
         self._dLambda_tol = dLambda_tol
-        self._t_prev = 0.0
+        self._t_prev = dolfin.Constant(0.0)
 
     """ For CaTrpn split"""
 
@@ -405,7 +405,7 @@ class LandModel(pulse.ActiveModel):
 
     @property
     def dt(self) -> float:
-        return self.t - self._t_prev
+        return float(self.t - self._t_prev)
 
     def update_current(self, lmbda):
         self.update_Zetas(lmbda=lmbda)
@@ -424,7 +424,7 @@ class LandModel(pulse.ActiveModel):
         self.TmB_prev.vector()[:] = self._TmB.vector()
 
         self._projector.project(self.Ta_current, self.Ta(self.lmbda))
-        self._t_prev = self.t
+        self._t_prev.assign(self.t)
 
     def Ta(self, lmbda):
         logger.debug("Evaluate Ta")

@@ -211,7 +211,7 @@ class LandModel(pulse.ActiveModel):
         self.Ta_current = dolfin.Function(self.function_space, name="Ta")
         self._projector = utils.Projector(self.function_space)
         self._dLambda_tol = dLambda_tol
-        self._t_prev = 0.0
+        self._t_prev = dolfin.Constant(0.0)
 
     """ From CaTrpn split"""
 
@@ -355,9 +355,7 @@ class LandModel(pulse.ActiveModel):
                 dt=self.dt,
             ),
         )
-        print("Catrpn", self._CaTrpn.vector().get_local()[0])
-
-    """ """
+        logger.debug("Catrpn", self._CaTrpn.vector().get_local()[0])
 
     def dLambda(self, lmbda):
         logger.debug("Evaluate dLambda")
@@ -508,7 +506,7 @@ class LandModel(pulse.ActiveModel):
 
     @property
     def dt(self) -> float:
-        return self.t - self._t_prev
+        return float(self.t - self._t_prev)
 
     def update_current(self, lmbda):
         self.update_Zetas(lmbda=lmbda)
@@ -524,7 +522,7 @@ class LandModel(pulse.ActiveModel):
         self.Zetas_prev.vector()[:] = self._Zetas.vector()
         self.Zetaw_prev.vector()[:] = self._Zetaw.vector()
         self.lmbda_prev.vector()[:] = self.lmbda.vector()
-        print("lmbda", self.lmbda_prev.vector()[0])
+        logger.debug("lmbda", self.lmbda_prev.vector()[0])
 
         self.XS_prev.vector()[:] = self._XS.vector()
         self.XW_prev.vector()[:] = self._XW.vector()
@@ -532,14 +530,14 @@ class LandModel(pulse.ActiveModel):
         self.CaTrpn_prev.vector()[:] = self._CaTrpn.vector()
 
         self._projector.project(self.Ta_current, self.Ta(self.lmbda))
-        self._t_prev = self.t
+        self._t_prev.assign(self.t)
 
     def Ta(self, lmbda):
         logger.debug("Evaluate Ta")
         Tref = self._parameters["Tref"]
         rs = self._parameters["rs"]
-        scale_popu_Tref = 1.0  # self._parameters["scale_popu_Tref"]
-        scale_popu_rs = 1.0  # self._parameters["scale_popu_rs"]
+        scale_popu_Tref = 1.0
+        scale_popu_rs = 1.0
         Beta0 = self._parameters["Beta0"]
 
         _min = ufl.min_value
