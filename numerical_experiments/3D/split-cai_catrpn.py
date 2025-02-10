@@ -5,6 +5,7 @@ config = {
     "sim": {
         "N": 2,
         "dt": 0.05,
+        "sim_dur": 100.0,
         "mech_mesh": "meshes/mesh_mech_0.5dx_0.5Lx_1.0Ly_2.0Lz",
         "markerfile": "meshes/mesh_mech_0.5dx_0.5Lx_1.0Ly_2.0Lz_surface_ffun",
         "modelfile": "../odefiles/ToRORd_dynCl_endo_catrpnsplit.ode",

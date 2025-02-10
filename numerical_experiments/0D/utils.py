@@ -252,9 +252,6 @@ def run_0D(
     ep_model = __import__(ep_file.stem).__dict__
     mechanics_model = __import__(mechanics_file.stem).__dict__
 
-    # Set time step
-    dt = 0.05
-    simdur = 10  # Simulation duration
     t = np.arange(0, simdur, dt)
 
     # Forwared generalized rush larsen scheme for the electrophysiology model

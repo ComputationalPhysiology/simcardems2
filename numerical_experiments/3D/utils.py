@@ -142,17 +142,17 @@ def run_3D(config: dict[str, Any] | None = None):
     t_bcs = dolfin.Constant(0)
 
     if config["sim"]["split_scheme"] == "cai":
-        land_params = {"cai": mechanics_missing_values_[0]}
+        land_params = {"cai": missing_mech.u_mechanics[0]}
         LandModel = simcardems2.land_caisplit.LandModel
 
     elif config["sim"]["split_scheme"] == "zeta":
         land_params = {
-            "XS": mechanics_missing_values_[0],
-            "XW": mechanics_missing_values_[1],
+            "XS": missing_mech.u_mechanics[0],
+            "XW": missing_mech.u_mechanics[1],
         }
         LandModel = simcardems2.land_Zetasplit.LandModel
     elif config["sim"]["split_scheme"] == "cai_catrpn":
-        land_params = {"CaTrpn": mechanics_missing_values_[0]}
+        land_params = {"CaTrpn": missing_mech.u_mechanics[0]}
         LandModel = simcardems2.land_CaTrpnsplit.LandModel
     else:
         raise ValueError(f"Unknown split scheme: {config['sim']['split_scheme']}")
