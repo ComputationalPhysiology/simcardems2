@@ -1,3 +1,16 @@
+numerical_experiments/0D/ToRORd_dynCl_endo_caisplit.py
+numerical_experiments/0D/ToRORd_dynCl_endo_caisplit_ep.py
+numerical_experiments/0D/ToRORd_dynCl_endo_caisplit_mechanics.py
+numerical_experiments/0D/ToRORd_dynCl_endo_catrpnsplit.py
+numerical_experiments/0D/ToRORd_dynCl_endo_catrpnsplit_ep.py
+numerical_experiments/0D/ToRORd_dynCl_endo_catrpnsplit_mechanics.py
+numerical_experiments/0D/ToRORd_dynCl_endo_zetasplit.py
+numerical_experiments/0D/ToRORd_dynCl_endo_zetasplit_ep.py
+numerical_experiments/0D/ToRORd_dynCl_endo_zetasplit_mechanics.py
+numerical_experiments/0D/output-cai_catrpn/
+numerical_experiments/0D/output-split-cai/
+numerical_experiments/0D/output-split-zeta/
+
 *.vtu
 *.pvd
 *.h5

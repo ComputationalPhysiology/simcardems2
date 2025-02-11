@@ -1,0 +1,34 @@
+name: Run 0D examples
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+
+jobs:
+
+  run-0D:
+    # This code depends on the result of check-code
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/scientificcomputing/fenics-gmsh:2024-02-19
+
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install package
+        run: python3 -m pip install -e .
+
+      - name: Run split-cai
+        working-directory: ./numerical_experiments/0D
+        run: python3 split_cai.py
+
+      - name: Run split-cai-catrpn
+        working-directory: ./numerical_experiments/0D
+        run: python3 split_cai_catrpn.py
+
+      - name: Run split-zeta
+        working-directory: ./numerical_experiments/0D
+        run: python3 split_zeta.py
