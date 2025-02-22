@@ -289,14 +289,13 @@ def run_0D(
     # Index of the stretch and stretch rate in the full model
     lmbda_index = model["parameter_index"]("lmbda")
     dLambda_index = model["parameter_index"]("dLambda")
-    
-    
+
     # lambda for use on EP side
-    if "dLambda" in ep_model['parameter']:
+    if "dLambda" in ep_model["parameter"]:
         dLambda_index_ep = ep_model["parameter_index"]("dLambda")
-    if "lmbda" in ep_model['parameter']:
+    if "lmbda" in ep_model["parameter"]:
         lmbda_index_ep = ep_model["parameter_index"]("lmbda")
-    
+
     for N in Ns:
         timing_init = time.perf_counter()
         # Get initial values from the EP model
@@ -349,9 +348,9 @@ def run_0D(
                 dLambda = 0
                 p[dLambda_index] = dLambda
                 p_mechanics[dLambda_index_mechanics] = dLambda
-                if "lmbda" in ep_model['parameter']:
+                if "lmbda" in ep_model["parameter"]:
                     p_ep[lmbda_index_ep] = lmbda_ti
-                if "dLambda" in ep_model['parameter']:
+                if "dLambda" in ep_model["parameter"]:
                     p_ep[dLambda_index_ep] = dLambda
 
             if run_full_model:
@@ -389,12 +388,12 @@ def run_0D(
                 p[dLambda_index] = dLambda
                 p_mechanics[dLambda_index_mechanics] = dLambda
                 prev_lmbda = lmbda_ti
-                
-                if "lmbda" in ep_model['parameter']:
+
+                if "lmbda" in ep_model["parameter"]:
                     p_ep[lmbda_index_ep] = lmbda_ti
-                if "dLambda" in ep_model['parameter']:
+                if "dLambda" in ep_model["parameter"]:
                     p_ep[dLambda_index_ep] = dLambda
-                
+
                 timings_solveloop.append(time.perf_counter() - timing_loopstart)
                 continue
 
@@ -436,15 +435,13 @@ def run_0D(
             dLambda = (lmbda_ti - prev_lmbda) / dt
             p[dLambda_index] = dLambda
             p_mechanics[dLambda_index_mechanics] = dLambda
-        
-            if "lmbda" in ep_model['parameter']:
-                p_ep[lmbda_index_ep] = lmbda_ti
-            if "dLambda" in ep_model['parameter']:
-                p_ep[dLambda_index_ep] = dLambda
-            
-            prev_lmbda = lmbda_ti
 
-    
+            if "lmbda" in ep_model["parameter"]:
+                p_ep[lmbda_index_ep] = lmbda_ti
+            if "dLambda" in ep_model["parameter"]:
+                p_ep[dLambda_index_ep] = dLambda
+
+            prev_lmbda = lmbda_ti
 
             # Update missing values for the EP model # J_TRPN for cai split
             if ep_missing_args:
