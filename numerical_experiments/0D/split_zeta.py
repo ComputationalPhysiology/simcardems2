@@ -26,5 +26,5 @@ utils.run_0D(
     save_traces=True,
     run_full_model=True,
     dt=0.05,
-    simdur=10.0,
+    simdur=500.0,
 )
