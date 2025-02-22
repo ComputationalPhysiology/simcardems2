@@ -290,6 +290,12 @@ def run_0D(
     lmbda_index = model["parameter_index"]("lmbda")
     dLambda_index = model["parameter_index"]("dLambda")
 
+    # lambda for use on EP side
+    if "dLambda" in ep_model["parameter"]:
+        dLambda_index_ep = ep_model["parameter_index"]("dLambda")
+    if "lmbda" in ep_model["parameter"]:
+        lmbda_index_ep = ep_model["parameter_index"]("lmbda")
+
     for N in Ns:
         timing_init = time.perf_counter()
         # Get initial values from the EP model
@@ -342,6 +348,10 @@ def run_0D(
                 dLambda = 0
                 p[dLambda_index] = dLambda
                 p_mechanics[dLambda_index_mechanics] = dLambda
+                if "lmbda" in ep_model["parameter"]:
+                    p_ep[lmbda_index_ep] = lmbda_ti
+                if "dLambda" in ep_model["parameter"]:
+                    p_ep[dLambda_index_ep] = dLambda
 
             if run_full_model:
                 # Forward step for the full model
@@ -378,6 +388,12 @@ def run_0D(
                 p[dLambda_index] = dLambda
                 p_mechanics[dLambda_index_mechanics] = dLambda
                 prev_lmbda = lmbda_ti
+
+                if "lmbda" in ep_model["parameter"]:
+                    p_ep[lmbda_index_ep] = lmbda_ti
+                if "dLambda" in ep_model["parameter"]:
+                    p_ep[dLambda_index_ep] = dLambda
+
                 timings_solveloop.append(time.perf_counter() - timing_loopstart)
                 continue
 
@@ -419,6 +435,12 @@ def run_0D(
             dLambda = (lmbda_ti - prev_lmbda) / dt
             p[dLambda_index] = dLambda
             p_mechanics[dLambda_index_mechanics] = dLambda
+
+            if "lmbda" in ep_model["parameter"]:
+                p_ep[lmbda_index_ep] = lmbda_ti
+            if "dLambda" in ep_model["parameter"]:
+                p_ep[dLambda_index_ep] = dLambda
+
             prev_lmbda = lmbda_ti
 
             # Update missing values for the EP model # J_TRPN for cai split
@@ -476,12 +498,12 @@ def run_0D(
             for name, values in track_values.items():
                 fig, ax = plt.subplots()
                 if values.ep_type != "none":
-                    ax.plot(t, values.ep_value, label="EP")
+                    ax.plot(t, values.ep_value, label="EP", alpha=0.5)
                 if values.mechanics_type != "none":
-                    ax.plot(t, values.mechanics_value, label="Mechanics")
+                    ax.plot(t, values.mechanics_value, label="Mechanics", alpha=0.5)
 
                 if run_full_model and values.full_type != "none":
-                    ax.plot(t, values.full_value, label="Full")
+                    ax.plot(t, values.full_value, label="Full", alpha=0.5)
                 ax.set_title(name)
                 ax.legend()
                 ax.grid()
